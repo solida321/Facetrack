@@ -1,42 +1,50 @@
+/*import 'package:flutter/material.dart';
+
+class AppColors {
+  AppColors._();
+
+  static const Color background = Color(0xFFF8F7F3);
+  static const Color panel = Color(0xFFFFFFFF);
+  static const Color ink = Color(0xFF263A31);
+  static const Color inkSoft = Color(0xFF7A857D);
+  static const Color line = Color(0xFFE6E9E2);
+
+  static const Color primary = Color(0xFF2F765D);
+  static const Color primarySoft = Color(0xFFE7EFE5);
+  static const Color accent = Color(0xFF397D63);
+  static const Color accentInk = Color(0xFFFFFFFF);
+
+  static const Color present = Color(0xFF397D63);
+  static const Color presentBg = Color(0xFFE7EFE5);
+  static const Color late = Color(0xFFAA773B);
+  static const Color lateBg = Color(0xFFF7EEDC);
+  static const Color absent = Color(0xFFB65B4D);
+  static const Color absentBg = Color(0xFFF7E9E5);
+}*/
 import 'package:flutter/material.dart';
 
 class AppColors {
-
-  /*
   AppColors._();
 
-  static const Color background = Color(0xFFF6F3ED);
+  // Warm, soft background — not stark white
+  static const Color background = Color(0xFFF7F5F0);
   static const Color panel = Color(0xFFFFFFFF);
-  static const Color ink = Color(0xFF17231F);
-  static const Color inkSoft = Color(0xFF5B675F);
-  static const Color line = Color(0xFFE7E2D8);
+  static const Color card = Color(0xFFFBFAF7);
 
-  static const Color primary = Color(0xFF26483F);
-  static const Color primarySoft = Color(0xFFE7EFEA);
-  static const Color accent = Color(0xFFE2A542);
-  static const Color accentInk = Color(0xFF26200E);
+  static const Color ink = Color(0xFF1E2A22);
+  static const Color inkSoft = Color(0xFF6B7568);
+  static const Color line = Color(0xFFE6E2D8);
 
-  static const Color present = Color(0xFF2E8C6A);
-  static const Color presentBg = Color(0xFFE5F3EB);
-  static const Color late = Color(0xFFD68A32);
-  static const Color lateBg = Color(0xFFFBEEDC);
-  static const Color absent = Color(0xFFC1543D);
-  static const Color absentBg = Color(0xFFF8E7E2);*/
-  static const Color background = Color(0xFFF5F7FA);
-  static const Color panel = Color(0xFFFFFFFF);
-  static const Color ink = Color(0xFF18212F);
-  static const Color inkSoft = Color(0xFF697586);
-  static const Color line = Color(0xFFE5EAF0);
+  // Sage green — the "bloom" primary
+  static const Color primary = Color(0xFF3D5A45);
+  static const Color primarySoft = Color(0xFFE5EBE0);
+  static const Color accent = Color(0xFFD9A441);
+  static const Color accentInk = Color(0xFF2E2410);
 
-  static const Color primary = Color(0xFF365CF5);
-  static const Color primarySoft = Color(0xFFEAF0FF);
-  static const Color accent = Color(0xFF36BFA7);
-  static const Color accentInk = Color(0xFF102B28);
-
-  static const Color present = Color(0xFF218C69);
-  static const Color presentBg = Color(0xFFE4F5EE);
-  static const Color late = Color(0xFFBC741D);
-  static const Color lateBg = Color(0xFFFFF2DD);
-  static const Color absent = Color(0xFFC64F55);
-  static const Color absentBg = Color(0xFFFFEAEB);
+  static const Color present = Color(0xFF3D7A52);
+  static const Color presentBg = Color(0xFFE2F0E4);
+  static const Color late = Color(0xFFC77D2E);
+  static const Color lateBg = Color(0xFFFAEBD9);
+  static const Color absent = Color(0xFFB4503E);
+  static const Color absentBg = Color(0xFFF6E2DD);
 }

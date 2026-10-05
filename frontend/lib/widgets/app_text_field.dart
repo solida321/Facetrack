@@ -6,7 +6,12 @@ class AppTextField extends StatelessWidget {
   final String label;
   final TextEditingController controller;
   final bool obscure;
-  const AppTextField({super.key, required this.label, required this.controller, this.obscure = false});
+  const AppTextField({
+    super.key,
+    required this.label,
+    required this.controller,
+    this.obscure = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -20,10 +25,26 @@ class AppTextField extends StatelessWidget {
           obscureText: obscure,
           decoration: InputDecoration(
             filled: true,
-            fillColor: AppColors.background,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: AppColors.line)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: AppColors.line)),
+            fillColor: AppColors.panel,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 13,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.line),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.line),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(
+                color: AppColors.primary,
+                width: 1.4,
+              ),
+            ),
           ),
         ),
       ],

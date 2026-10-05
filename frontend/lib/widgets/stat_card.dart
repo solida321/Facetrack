@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../app/theme/app_colors.dart';
 
 class StatCard extends StatelessWidget {
   final String value;
@@ -18,11 +19,23 @@ class StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-      decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(14)),
+      decoration: BoxDecoration(
+        color: background,
+        border: Border.all(color: AppColors.line),
+        borderRadius: BorderRadius.circular(14),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(value, style: TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.w700, fontSize: 20, color: color)),
+          Text(
+            value,
+            style: TextStyle(
+              fontFamily: 'Sora',
+              fontWeight: FontWeight.w700,
+              fontSize: 20,
+              color: color,
+            ),
+          ),
           const SizedBox(height: 2),
           Text(label, style: TextStyle(fontSize: 10.5, color: color)),
         ],

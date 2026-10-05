@@ -5,7 +5,12 @@ class StatusChipRow extends StatelessWidget {
   final int present;
   final int late;
   final int absent;
-  const StatusChipRow({super.key, required this.present, required this.late, required this.absent});
+  const StatusChipRow({
+    super.key,
+    required this.present,
+    required this.late,
+    required this.absent,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -24,11 +29,30 @@ class StatusChipRow extends StatelessWidget {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 9),
-        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
+        decoration: BoxDecoration(
+          color: bg,
+          border: Border.all(color: AppColors.line),
+          borderRadius: BorderRadius.circular(12),
+        ),
         child: Column(
           children: [
-            Text(number, style: TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.w700, fontSize: 15, color: color)),
-            Text(label, style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600, color: color)),
+            Text(
+              number,
+              style: TextStyle(
+                fontFamily: 'Sora',
+                fontWeight: FontWeight.w700,
+                fontSize: 15,
+                color: color,
+              ),
+            ),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 9.5,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
           ],
         ),
       ),

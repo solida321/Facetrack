@@ -13,7 +13,8 @@ class ScheduleManagementScreen extends StatefulWidget {
   const ScheduleManagementScreen({super.key});
 
   @override
-  State<ScheduleManagementScreen> createState() => _ScheduleManagementScreenState();
+  State<ScheduleManagementScreen> createState() =>
+      _ScheduleManagementScreenState();
 }
 
 class _ScheduleManagementScreenState extends State<ScheduleManagementScreen> {
@@ -58,7 +59,8 @@ class _ScheduleManagementScreenState extends State<ScheduleManagementScreen> {
   List<List<ScheduleModel>> _groupedSchedules() {
     final Map<String, List<ScheduleModel>> groups = {};
     for (final s in _schedules) {
-      final key = '${s.sessionName}|${s.groupId}|${s.startTime}|${s.endTime}|${s.locationId}';
+      final key =
+          '${s.sessionName}|${s.groupId}|${s.startTime}|${s.endTime}|${s.locationId}';
       groups.putIfAbsent(key, () => []).add(s);
     }
     final result = groups.values.toList();
@@ -76,8 +78,17 @@ class _ScheduleManagementScreenState extends State<ScheduleManagementScreen> {
         title: const Text('Delete schedule?'),
         content: Text('This removes all days ($dayLabels) for this schedule.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete', style: TextStyle(color: AppColors.absent))),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: AppColors.absent),
+            ),
+          ),
         ],
       ),
     );
@@ -94,7 +105,9 @@ class _ScheduleManagementScreenState extends State<ScheduleManagementScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.panel,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (context) => _ScheduleFormSheet(
         existing: existing,
         groups: _groups,
@@ -113,45 +126,78 @@ class _ScheduleManagementScreenState extends State<ScheduleManagementScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
-        title: Text('Schedules', style: AppTextStyles.heading),
+        toolbarHeight: 72,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Room for a rhythm.', style: AppTextStyles.headline),
+            Text(
+              'Grouped schedules · Bloom Studio',
+              style: AppTextStyles.bodySoft,
+            ),
+          ],
+        ),
         actions: [
-          IconButton(icon: const Icon(Icons.add_rounded, color: AppColors.primary), onPressed: () => _openForm()),
+          IconButton(
+            icon: const Icon(Icons.add_rounded, color: AppColors.primary),
+            onPressed: () => _openForm(),
+          ),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            )
           : grouped.isEmpty
-              ? Center(child: Text('No schedules yet.', style: AppTextStyles.bodySoft))
-              : ListView.builder(
-                  padding: const EdgeInsets.all(20),
-                  itemCount: grouped.length,
-                  itemBuilder: (context, i) {
-                    final group = grouped[i];
-                    final first = group.first;
-                    final dayLabels = group.map((s) => _dayName(s.dayOfWeek)).join(', ');
+          ? Center(
+              child: Text('No schedules yet.', style: AppTextStyles.bodySoft),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(20),
+              itemCount: grouped.length,
+              itemBuilder: (context, i) {
+                final group = grouped[i];
+                final first = group.first;
+                final dayLabels = group
+                    .map((s) => _dayName(s.dayOfWeek))
+                    .join(', ');
 
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      child: ListTile(
-                        title: Text(first.sessionName, style: const TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.w600, fontSize: 13)),
-                        subtitle: Text('$dayLabels · ${first.startTime.substring(0, 5)} – ${first.endTime.substring(0, 5)} · ${_groupName(first.groupId)}'),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit_outlined, size: 20),
-                              onPressed: () => _openForm(existing: first),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline, size: 20, color: AppColors.absent),
-                              onPressed: () => _deleteGroup(group),
-                            ),
-                          ],
-                        ),
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  child: ListTile(
+                    title: Text(
+                      first.sessionName,
+                      style: const TextStyle(
+                        fontFamily: 'Sora',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
                       ),
-                    );
-                  },
-                ),
+                    ),
+                    subtitle: Text(
+                      '$dayLabels · ${first.startTime.substring(0, 5)} – ${first.endTime.substring(0, 5)} · ${_groupName(first.groupId)}',
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit_outlined, size: 20),
+                          onPressed: () => _openForm(existing: first),
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            size: 20,
+                            color: AppColors.absent,
+                          ),
+                          onPressed: () => _deleteGroup(group),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
     );
   }
 }
@@ -162,7 +208,12 @@ class _ScheduleFormSheet extends StatefulWidget {
   final List<LocationModel> locations;
   final VoidCallback onSaved;
 
-  const _ScheduleFormSheet({this.existing, required this.groups, required this.locations, required this.onSaved});
+  const _ScheduleFormSheet({
+    this.existing,
+    required this.groups,
+    required this.locations,
+    required this.onSaved,
+  });
 
   @override
   State<_ScheduleFormSheet> createState() => _ScheduleFormSheetState();
@@ -191,16 +242,27 @@ class _ScheduleFormSheetState extends State<_ScheduleFormSheet> {
         ..add(e.dayOfWeek ?? 0);
       _graceController.text = '${e.gracePeriodMinutes}';
       final startParts = e.startTime.split(':');
-      _startTime = TimeOfDay(hour: int.parse(startParts[0]), minute: int.parse(startParts[1]));
+      _startTime = TimeOfDay(
+        hour: int.parse(startParts[0]),
+        minute: int.parse(startParts[1]),
+      );
       final endParts = e.endTime.split(':');
-      _endTime = TimeOfDay(hour: int.parse(endParts[0]), minute: int.parse(endParts[1]));
+      _endTime = TimeOfDay(
+        hour: int.parse(endParts[0]),
+        minute: int.parse(endParts[1]),
+      );
     }
   }
 
-  String _fmt(TimeOfDay t) => '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}:00';
+  String _fmt(TimeOfDay t) =>
+      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}:00';
 
   Future<void> _save() async {
-    if (_groupId == null || _nameController.text.trim().isEmpty || _selectedDays.isEmpty) return;
+    if (_groupId == null ||
+        _nameController.text.trim().isEmpty ||
+        _selectedDays.isEmpty) {
+      return;
+    }
     setState(() => _isSaving = true);
 
     try {
@@ -246,28 +308,46 @@ class _ScheduleFormSheetState extends State<_ScheduleFormSheet> {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.only(
-        left: 20, right: 20, top: 20,
+        left: 20,
+        right: 20,
+        top: 20,
         bottom: MediaQuery.of(context).viewInsets.bottom + 20,
       ),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(widget.existing != null ? 'Edit schedule' : 'New schedule', style: AppTextStyles.heading),
+            Text(
+              widget.existing != null ? 'Edit schedule' : 'New schedule',
+              style: AppTextStyles.heading,
+            ),
             const SizedBox(height: 16),
-            TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'Session name')),
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(labelText: 'Session name'),
+            ),
             const SizedBox(height: 12),
             DropdownButtonFormField<int>(
               initialValue: _groupId,
               decoration: const InputDecoration(labelText: 'Group'),
-              items: widget.groups.map((g) => DropdownMenuItem(value: g.id, child: Text(g.name))).toList(),
+              items: widget.groups
+                  .map(
+                    (g) => DropdownMenuItem(value: g.id, child: Text(g.name)),
+                  )
+                  .toList(),
               onChanged: (v) => setState(() => _groupId = v),
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<int>(
               initialValue: _locationId,
-              decoration: const InputDecoration(labelText: 'Location (optional)'),
-              items: widget.locations.map((l) => DropdownMenuItem(value: l.id, child: Text(l.name))).toList(),
+              decoration: const InputDecoration(
+                labelText: 'Location (optional)',
+              ),
+              items: widget.locations
+                  .map(
+                    (l) => DropdownMenuItem(value: l.id, child: Text(l.name)),
+                  )
+                  .toList(),
               onChanged: (v) => setState(() => _locationId = v),
             ),
             const SizedBox(height: 12),
@@ -305,7 +385,10 @@ class _ScheduleFormSheetState extends State<_ScheduleFormSheet> {
                     title: const Text('Start'),
                     subtitle: Text(_startTime.format(context)),
                     onTap: () async {
-                      final picked = await showTimePicker(context: context, initialTime: _startTime);
+                      final picked = await showTimePicker(
+                        context: context,
+                        initialTime: _startTime,
+                      );
                       if (picked != null) setState(() => _startTime = picked);
                     },
                   ),
@@ -316,7 +399,10 @@ class _ScheduleFormSheetState extends State<_ScheduleFormSheet> {
                     title: const Text('End'),
                     subtitle: Text(_endTime.format(context)),
                     onTap: () async {
-                      final picked = await showTimePicker(context: context, initialTime: _endTime);
+                      final picked = await showTimePicker(
+                        context: context,
+                        initialTime: _endTime,
+                      );
                       if (picked != null) setState(() => _endTime = picked);
                     },
                   ),
@@ -326,16 +412,28 @@ class _ScheduleFormSheetState extends State<_ScheduleFormSheet> {
             TextField(
               controller: _graceController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Grace period (minutes)'),
+              decoration: const InputDecoration(
+                labelText: 'Grace period (minutes)',
+              ),
             ),
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: _isSaving ? null : _save,
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, padding: const EdgeInsets.symmetric(vertical: 14)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
                 child: _isSaving
-                    ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
                     : const Text('Save'),
               ),
             ),
