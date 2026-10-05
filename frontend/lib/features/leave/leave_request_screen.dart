@@ -119,13 +119,20 @@ class _LeaveRequestScreenState extends State<LeaveRequestScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
-        title: Text('Request leave', style: AppTextStyles.heading),
+        title: Text('A little time for you.', style: AppTextStyles.headline),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text(
+              'Your leave requests · ${DateTime.now().year}',
+              style: AppTextStyles.bodySoft,
+            ),
+            const SizedBox(height: 16),
+            Text('Request leave', style: AppTextStyles.subheading),
+            const SizedBox(height: 10),
             _dateField('From', _dateFrom, () => _pickDate(true)),
             const SizedBox(height: 12),
             _dateField('To', _dateTo, () => _pickDate(false)),
@@ -157,9 +164,18 @@ class _LeaveRequestScreenState extends State<LeaveRequestScreen> {
                     ? const SizedBox(
                         height: 18,
                         width: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
-                    : const Text('Submit request', style: TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.w600)),
+                    : const Text(
+                        'Submit request',
+                        style: TextStyle(
+                          fontFamily: 'Sora',
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
               ),
             ),
 
@@ -170,46 +186,66 @@ class _LeaveRequestScreenState extends State<LeaveRequestScreen> {
             if (_myLeaves.isEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Text('No leave requests yet.', style: AppTextStyles.bodySoft),
+                child: Text(
+                  'No leave requests yet.',
+                  style: AppTextStyles.bodySoft,
+                ),
               )
             else
-              ..._myLeaves.map((l) => Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: AppColors.line),
-                      borderRadius: BorderRadius.circular(13),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${l.dateFrom.day}/${l.dateFrom.month} – ${l.dateTo.day}/${l.dateTo.month}',
-                              style: const TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.w600, fontSize: 12.5),
+              ..._myLeaves.map(
+                (l) => Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.panel,
+                    border: Border.all(color: AppColors.line),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${l.dateFrom.day}/${l.dateFrom.month} – ${l.dateTo.day}/${l.dateTo.month}',
+                            style: const TextStyle(
+                              fontFamily: 'Sora',
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12.5,
                             ),
-                            if (l.reason != null && l.reason!.isNotEmpty) ...[
-                              const SizedBox(height: 2),
-                              Text(l.reason!, style: AppTextStyles.bodySoft),
-                            ],
+                          ),
+                          if (l.reason != null && l.reason!.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(l.reason!, style: AppTextStyles.bodySoft),
                           ],
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 9,
+                          vertical: 4,
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: _statusBg(l.status),
-                            borderRadius: BorderRadius.circular(100),
-                          ),
-                          child: Text(
-                            l.status,
-                            style: TextStyle(color: _statusColor(l.status), fontWeight: FontWeight.w700, fontSize: 9.5),
+                        decoration: BoxDecoration(
+                          color: _statusBg(l.status),
+                          borderRadius: BorderRadius.circular(100),
+                        ),
+                        child: Text(
+                          l.status,
+                          style: TextStyle(
+                            color: _statusColor(l.status),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 9.5,
                           ),
                         ),
-                      ],
-                    ),
-                  )),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -222,15 +258,18 @@ class _LeaveRequestScreenState extends State<LeaveRequestScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         decoration: BoxDecoration(
+          color: AppColors.panel,
           border: Border.all(color: AppColors.line),
-          borderRadius: BorderRadius.circular(13),
+          borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(label, style: AppTextStyles.bodySoft),
             Text(
-              value == null ? 'Select date' : '${value.day}/${value.month}/${value.year}',
+              value == null
+                  ? 'Select date'
+                  : '${value.day}/${value.month}/${value.year}',
               style: AppTextStyles.body,
             ),
           ],

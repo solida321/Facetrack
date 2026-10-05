@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../app/theme/app_colors.dart';
 import 'home/admin_dashboard_screen.dart';
 import 'users/user_management_screen.dart';
 import 'approvals/approvals_screen.dart';
@@ -19,33 +18,52 @@ class _AdminShellState extends State<AdminShell> {
   int _index = 0;
 
   final _tabs = const [
-  AdminDashboardScreen(),
-  UserManagementScreen(),
-  ScheduleManagementScreen(),
-  GroupManagementScreen(),
-  ApprovalsScreen(),
-  UserProfileScreen(),
-];
+    AdminDashboardScreen(),
+    UserManagementScreen(),
+    ScheduleManagementScreen(),
+    GroupManagementScreen(),
+    ApprovalsScreen(),
+    UserProfileScreen(),
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: _tabs[_index],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _index,
-        onTap: (i) => setState(() => _index = i),
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: AppColors.inkSoft,
-        backgroundColor: AppColors.panel,
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.people_alt_rounded), label: 'Users'),
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_month_rounded), label: 'Schedules'),
-          BottomNavigationBarItem(icon: Icon(Icons.groups_rounded), label: 'Teams'),
-          BottomNavigationBarItem(icon: Icon(Icons.fact_check_rounded), label: 'Approvals'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
-         
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _index,
+        onDestinationSelected: (i) => setState(() => _index = i),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home_rounded),
+            label: 'Home',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.people_alt_outlined),
+            selectedIcon: Icon(Icons.people_alt_rounded),
+            label: 'Users',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.calendar_month_outlined),
+            selectedIcon: Icon(Icons.calendar_month_rounded),
+            label: 'Schedules',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.groups_outlined),
+            selectedIcon: Icon(Icons.groups_rounded),
+            label: 'Teams',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.fact_check_outlined),
+            selectedIcon: Icon(Icons.fact_check_rounded),
+            label: 'Approvals',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline_rounded),
+            selectedIcon: Icon(Icons.person_rounded),
+            label: 'Profile',
+          ),
         ],
       ),
     );

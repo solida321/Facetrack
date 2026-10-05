@@ -6,6 +6,8 @@ import '../../../app/theme/app_text_styles.dart';
 import '../../../core/controllers/auth_controller.dart';
 import '../../../core/network/user_api.dart';
 import '../../../data/models/user_model.dart';
+import '../../../widgets/bloom_card.dart';
+import '../../../widgets/status_pill.dart';
 
 class TeamOverviewScreen extends StatefulWidget {
   const TeamOverviewScreen({super.key});
@@ -34,7 +36,10 @@ class _TeamOverviewScreenState extends State<TeamOverviewScreen> {
     try {
       final allUsers = await UserApi.getAll();
       final team = allUsers.where((u) => u.groupId == groupId).toList();
-      setState(() { _team = team; _isLoading = false; });
+      setState(() {
+        _team = team;
+        _isLoading = false;
+      });
     } catch (e) {
       setState(() => _isLoading = false);
     }
@@ -44,40 +49,81 @@ class _TeamOverviewScreenState extends State<TeamOverviewScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(backgroundColor: AppColors.background, elevation: 0, title: Text('Team', style: AppTextStyles.heading)),
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        toolbarHeight: 72,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('A team in bloom.', style: AppTextStyles.headline),
+            Text('Operations · Team members', style: AppTextStyles.bodySoft),
+          ],
+        ),
+      ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            )
           : _team.isEmpty
-              ? Center(child: Text('No team members found.', style: AppTextStyles.bodySoft))
-              : ListView.separated(
-                  padding: const EdgeInsets.all(20),
-                  itemCount: _team.length,
-                  separatorBuilder: (_, _) => const Divider(color: AppColors.line, height: 1),
-                  itemBuilder: (context, i) {
-                    final u = _team[i];
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: CircleAvatar(
-                        backgroundColor: AppColors.primarySoft,
-                        child: Text(u.fullName.isNotEmpty ? u.fullName[0] : '?',
-                            style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700)),
-                      ),
-                      title: Text(u.fullName, style: const TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.w600, fontSize: 13)),
-                      subtitle: Text(u.email, style: AppTextStyles.bodySoft),
-                      trailing: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: u.status == 'active' ? AppColors.presentBg : AppColors.lateBg,
-                          borderRadius: BorderRadius.circular(100),
+          ? Center(
+              child: Text(
+                'No team members found.',
+                style: AppTextStyles.bodySoft,
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              itemCount: _team.length,
+              itemBuilder: (context, i) {
+                final u = _team[i];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 9),
+                  child: BloomCard(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 13,
+                    ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: AppColors.primarySoft,
+                          child: Text(
+                            u.fullName.isNotEmpty ? u.fullName[0] : '?',
+                            style: const TextStyle(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
-                        child: Text(u.status, style: TextStyle(
-                          fontSize: 9.5, fontWeight: FontWeight.w700,
-                          color: u.status == 'active' ? AppColors.present : AppColors.late,
-                        )),
-                      ),
-                    );
-                  },
-                ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                u.fullName,
+                                style: const TextStyle(
+                                  fontFamily: 'Sora',
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(u.email, style: AppTextStyles.bodySoft),
+                            ],
+                          ),
+                        ),
+                        u.status == 'active'
+                            ? StatusPill.present('Active')
+                            : StatusPill.neutral(u.status),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
     );
   }
 }

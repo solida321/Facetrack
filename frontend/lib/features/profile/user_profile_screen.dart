@@ -47,7 +47,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     final auth = context.read<AuthController>();
     final user = auth.currentUser;
     if (user == null) return;
-    await UserApi.updateUser(user.id, fullName: _nameController.text.trim(), phone: _phoneController.text.trim());
+    await UserApi.updateUser(
+      user.id,
+      fullName: _nameController.text.trim(),
+      phone: _phoneController.text.trim(),
+    );
     setState(() => _isEditing = false);
   }
 
@@ -59,59 +63,202 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: 32, backgroundColor: AppColors.primarySoft,
-                child: Text(
-                  user?.fullName.isNotEmpty == true ? user!.fullName[0] : '?',
-                  style: const TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.w700, color: AppColors.primary, fontSize: 20),
-                ),
+              Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: AppColors.primarySoft,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.spa_rounded,
+                      color: AppColors.primary,
+                      size: 19,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'bloom',
+                    style: TextStyle(
+                      fontFamily: 'Sora',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-
-              if (!_isEditing) ...[
-                Text(user?.fullName ?? '', style: AppTextStyles.heading),
-                Text(user?.email ?? '', style: AppTextStyles.bodySoft),
-                const SizedBox(height: 4),
-                Text('${user?.role.name ?? ''} · ${_group?.name ?? 'No group assigned'}',
-                    style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 12)),
-              ] else ...[
-                TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'Full name')),
-                const SizedBox(height: 10),
-                TextField(controller: _phoneController, decoration: const InputDecoration(labelText: 'Phone')),
-              ],
-
-              const SizedBox(height: 24),
-
-              if (!_isEditing)
-                ListTile(
-                  title: const Text('Edit profile'),
-                  onTap: () => setState(() => _isEditing = true),
-                )
-              else
-                Row(
+              const SizedBox(height: 20),
+              Text('Your space.', style: AppTextStyles.heading),
+              const SizedBox(height: 3),
+              Text(
+                'Your account, preferences and work details',
+                style: AppTextStyles.bodySoft,
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.primarySoft,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
                   children: [
-                    Expanded(child: OutlinedButton(onPressed: () => setState(() => _isEditing = false), child: const Text('Cancel'))),
-                    const SizedBox(width: 10),
-                    Expanded(child: ElevatedButton(onPressed: _save, child: const Text('Save'))),
+                    CircleAvatar(
+                      radius: 23,
+                      backgroundColor: AppColors.panel,
+                      child: Text(
+                        user?.fullName.isNotEmpty == true
+                            ? user!.fullName[0]
+                            : '?',
+                        style: const TextStyle(
+                          fontFamily: 'Sora',
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            user?.fullName ?? '',
+                            style: AppTextStyles.subheading,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${user?.role.name ?? ''} · ${_group?.name ?? 'No group assigned'}',
+                            style: AppTextStyles.bodySoft,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(
+                      Icons.check_circle_rounded,
+                      color: AppColors.primary,
+                      size: 18,
+                    ),
                   ],
                 ),
-
-              ListTile(
-                title: const Text('Log out', style: TextStyle(color: AppColors.absent)),
-                onTap: () async {
-                  await auth.logout();
-                  if (context.mounted) {
-                    Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false);
-                  }
-                },
+              ),
+              const SizedBox(height: 20),
+              Text('Work details', style: AppTextStyles.subheading),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(
+                  color: AppColors.panel,
+                  border: Border.all(color: AppColors.line),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Column(
+                  children: [
+                    _detailRow('Email', user?.email ?? ''),
+                    const Divider(height: 1, color: AppColors.line),
+                    _detailRow('Group', _group?.name ?? 'No group assigned'),
+                    if ((user?.phone ?? '').isNotEmpty) ...[
+                      const Divider(height: 1, color: AppColors.line),
+                      _detailRow('Phone', user!.phone!),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              if (_isEditing) ...[
+                Text('Edit profile', style: AppTextStyles.subheading),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(labelText: 'Full name'),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _phoneController,
+                  decoration: const InputDecoration(labelText: 'Phone'),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => setState(() => _isEditing = false),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _save,
+                        child: const Text('Save'),
+                      ),
+                    ),
+                  ],
+                ),
+              ] else
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.panel,
+                    border: Border.all(color: AppColors.line),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: ListTile(
+                    leading: const Icon(
+                      Icons.edit_outlined,
+                      color: AppColors.primary,
+                    ),
+                    title: const Text('Edit profile'),
+                    trailing: const Icon(
+                      Icons.chevron_right_rounded,
+                      color: AppColors.inkSoft,
+                    ),
+                    onTap: () => setState(() => _isEditing = true),
+                  ),
+                ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    await auth.logout();
+                    if (context.mounted) {
+                      Navigator.pushNamedAndRemoveUntil(
+                        context,
+                        AppRoutes.login,
+                        (route) => false,
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.logout_rounded, size: 17),
+                  label: const Text('Log out'),
+                ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: AppTextStyles.bodySoft),
+          const SizedBox(height: 4),
+          Text(value, style: AppTextStyles.body),
+        ],
       ),
     );
   }
