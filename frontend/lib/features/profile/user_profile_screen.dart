@@ -225,6 +225,31 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   ),
                 ),
               const SizedBox(height: 12),
+              Text('My records', style: AppTextStyles.subheading),
+              const SizedBox(height: 8),
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.panel,
+                  border: Border.all(color: AppColors.line),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: ListTile(
+                  leading: const Icon(
+                    Icons.history_rounded,
+                    color: AppColors.primary,
+                  ),
+                  title: const Text('Attendance history'),
+                  trailing: const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.inkSoft,
+                  ),
+                  onTap: () => Navigator.pushNamed(
+                    context,
+                    AppRoutes.attendanceHistory,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(

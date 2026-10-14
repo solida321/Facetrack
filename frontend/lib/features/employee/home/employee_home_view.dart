@@ -722,14 +722,15 @@ class _EmployeeHomeViewState extends State<EmployeeHomeView> {
 
   Widget _shiftCard(ScheduleModel s) {
     final record = _todayRecordFor(s.id);
-    final checkedIn = record != null;
+    final isAbsent = record?.status == 'absent';
+    final checkedIn = record != null && !isAbsent;
     final isLate = record?.status == 'late';
 
-    final pill = !checkedIn
+final pill = isAbsent
+    ? StatusPill.absent('Absent')
+    : !checkedIn
         ? StatusPill.neutral('Upcoming')
-        : (isLate
-            ? StatusPill.late('Checked in')
-            : StatusPill.present('Checked in'));
+        : (isLate ? StatusPill.late('Checked in') : StatusPill.present('Checked in'));
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),

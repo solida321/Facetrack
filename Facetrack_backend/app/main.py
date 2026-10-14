@@ -5,6 +5,12 @@ from app.api.routers import auth  , schedule ,attendance ,leave_request ,correct
 from app.api.routers import location
 from app.api.routers import role , face_profile
 
+import asyncio
+from contextlib import asynccontextmanager
+
+from app.core.database import SessionLocal
+from app.services.absence_service import mark_absences
+
 app = FastAPI(title="AttendFace API")
 
 
@@ -35,3 +41,28 @@ app.include_router(face_profile.router)
 @app.get("/")
 def read_root():
     return {"message": "AttendFace API is running"}
+
+
+
+def _run_absence_job():
+    db = SessionLocal()
+    try:
+        mark_absences(db)
+    finally:
+        db.close()
+
+
+async def _absence_loop():
+    while True:
+        try:
+            await asyncio.to_thread(_run_absence_job)
+        except Exception as e:
+            print("absence job failed:", e)
+        await asyncio.sleep(600)  # every 10 minutes
+
+
+@asynccontextmanager
+async def lifespan(app):
+    task = asyncio.create_task(_absence_loop())
+    yield
+    task.cancel()

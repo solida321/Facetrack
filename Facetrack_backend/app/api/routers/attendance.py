@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.schemas.attendance_record import CheckInRequest, CheckOutRequest, AttendanceRecordOut
 from app.services import attendance_service
+from app.services import absence_service
 
 router = APIRouter(prefix="/attendance", tags=["Attendance"])
 
@@ -32,3 +33,8 @@ def get_attendance(record_id: int, db: Session = Depends(get_db)):
 @router.get("/user/{user_id}", response_model=list[AttendanceRecordOut])
 def get_user_attendance(user_id: int, db: Session = Depends(get_db)):
     return attendance_service.get_attendance_by_user(db, user_id)
+
+
+@router.post("/mark-absences")
+def run_absence_job(db: Session = Depends(get_db)):
+    return {"created": absence_service.mark_absences(db)}

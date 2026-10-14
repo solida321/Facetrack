@@ -46,6 +46,15 @@ def check_in(db: Session, data: CheckInRequest) -> AttendanceRecord:
     scheduled_start = datetime.combine(today, schedule.start_time, tzinfo=CAMBODIA_TZ)
     earliest_allowed = scheduled_start - timedelta(minutes=EARLY_CHECKIN_WINDOW_MINUTES)
 
+    # check if the shift has already ended
+    shift_end = datetime.combine(today, schedule.end_time, tzinfo=CAMBODIA_TZ)
+    if now_local > shift_end:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This shift has already ended."
+        )
+    #check if the shift has not started yet
+
     if now_local < earliest_allowed:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
