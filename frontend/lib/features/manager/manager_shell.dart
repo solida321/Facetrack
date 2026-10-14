@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../../app/theme/app_colors.dart';
 import 'home/manager_home_view.dart';
-import '../attendance/schedule/today_schedule_screen.dart';
+import '../attendance/schedule/my_schedule_screen.dart';
 import 'team/team_overview_screen.dart';
+import '../admin/approvals/approvals_screen.dart';
 import '../leave/leave_request_screen.dart';
 import '../profile/user_profile_screen.dart';
-import '../admin/approvals/approvals_screen.dart';
 
 class ManagerShell extends StatefulWidget {
   const ManagerShell({super.key});
@@ -19,9 +20,9 @@ class _ManagerShellState extends State<ManagerShell> {
 
   final _tabs = const [
     ManagerHomeView(),
-    TodayScheduleScreen(),
+    MyScheduleScreen(),
     TeamOverviewScreen(),
-    ApprovalsScreen(), // ← add this
+    ApprovalsScreen(),
     LeaveRequestScreen(),
     UserProfileScreen(),
   ];
@@ -30,39 +31,22 @@ class _ManagerShellState extends State<ManagerShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: _tabs[_index],
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home_rounded),
-            label: 'Home',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.qr_code_scanner_rounded),
-            label: 'Scan',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.groups_outlined),
-            selectedIcon: Icon(Icons.groups_rounded),
-            label: 'Team',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.fact_check_outlined),
-            selectedIcon: Icon(Icons.fact_check_rounded),
-            label: 'Approvals',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.event_note_outlined),
-            selectedIcon: Icon(Icons.event_note_rounded),
-            label: 'Leave',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline_rounded),
-            selectedIcon: Icon(Icons.person_rounded),
-            label: 'Profile',
-          ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _index,
+        onTap: (i) => setState(() => _index = i),
+        selectedItemColor: AppColors.primary,
+        unselectedItemColor: AppColors.inkSoft,
+        backgroundColor: AppColors.panel,
+        type: BottomNavigationBarType.fixed,
+        selectedFontSize: 10,
+        unselectedFontSize: 10,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.calendar_today_rounded), label: 'Schedule'),
+          BottomNavigationBarItem(icon: Icon(Icons.groups_rounded), label: 'Team'),
+          BottomNavigationBarItem(icon: Icon(Icons.fact_check_rounded), label: 'Approvals'),
+          BottomNavigationBarItem(icon: Icon(Icons.event_note_rounded), label: 'Leave'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
         ],
       ),
     );

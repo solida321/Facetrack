@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:camera/camera.dart';
+
 import 'package:face_detection_tflite/face_detection_tflite.dart';
 import 'package:provider/provider.dart';
+import '../../../widgets/cover_camera_preview.dart';
 
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_text_styles.dart';
@@ -120,7 +121,7 @@ class _FaceRegistrationScreenState extends State<FaceRegistrationScreen> {
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: _isCameraReady
-                    ? CameraPreview(CameraService.controller!)
+                    ? CoverCameraPreview(controller: CameraService.controller!)
                     : const Center(child: CircularProgressIndicator(color: AppColors.accent)),
               ),
 

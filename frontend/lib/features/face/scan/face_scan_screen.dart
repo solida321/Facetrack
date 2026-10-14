@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:camera/camera.dart';
+import '../../../widgets/cover_camera_preview.dart';
 import 'package:face_detection_tflite/face_detection_tflite.dart';
 
 import '../../../app/theme/app_colors.dart';
@@ -95,7 +95,7 @@ class _FaceScanScreenState extends State<FaceScanScreen> {
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: _isCameraReady
-                    ? CameraPreview(CameraService.controller!)
+                    ? CoverCameraPreview(controller: CameraService.controller!)
                     : const Center(child: CircularProgressIndicator(color: AppColors.accent)),
               ),
             ),

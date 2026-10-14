@@ -4,7 +4,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.core.database import Base
-
+from sqlalchemy import Boolean, text  
 
 class Schedule(Base):
     """Defines when a group (department/team) works, and where.
@@ -32,6 +32,7 @@ class Schedule(Base):
     grace_period_minutes = Column(Integer, nullable=False, default=10)
     location_id = Column(BigInteger, ForeignKey("locations.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    is_active = Column(Boolean, nullable=False, default=True, server_default=text("true"))
 
     group = relationship("Group")
     location = relationship("Location")
