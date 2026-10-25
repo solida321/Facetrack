@@ -12,4 +12,13 @@ class LocationApi {
     final res = await ApiClient.dio.post('/locations/', data: location.toJson());
     return LocationModel.fromJson(res.data);
   }
+
+  static Future<LocationModel> update(int locationId, LocationModel location) async {
+    final res = await ApiClient.dio.put('/locations/$locationId', data: location.toJson());
+    return LocationModel.fromJson(res.data);
+  }
+
+  static Future<void> delete(int locationId) async {
+    await ApiClient.dio.delete('/locations/$locationId');
+  }
 }

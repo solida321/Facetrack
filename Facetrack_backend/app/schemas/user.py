@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class UserResponse(BaseModel):
@@ -50,11 +50,15 @@ class UserUpdate(BaseModel):
     gender: str | None = None
 
 
-
 class UserCreateByAdmin(BaseModel):
     full_name: str
     email: str
-    password: str
+    password: str = Field(..., min_length=8, max_length=72)  # changed: at least 8 characters
     role_id: int
     group_id: int | None = None
     status: str = "active"
+
+
+class PasswordChange(BaseModel):
+    old_password: str
+    new_password: str = Field(min_length=8, max_length=72)  # added max 72: the hashing ignores the rest

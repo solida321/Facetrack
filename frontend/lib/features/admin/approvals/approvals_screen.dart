@@ -220,6 +220,13 @@ class _ApprovalsScreenState extends State<ApprovalsScreen>
             ),
             const SizedBox(height: 4),
             Text(correction.reason, style: AppTextStyles.bodySoft),
+            if (correction.requestedCheckOutTime != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Real check-out time: ${correction.requestedCheckOutTime!.toLocal().hour.toString().padLeft(2, '0')}:${correction.requestedCheckOutTime!.toLocal().minute.toString().padLeft(2, '0')}',
+                style: const TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.w600, fontSize: 12),
+              ),
+            ],
             const SizedBox(height: 10),
             Row(
               children: [

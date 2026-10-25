@@ -4,6 +4,7 @@ from fastapi import HTTPException, status
 
 from app.models.location import Location
 from app.schemas.location import LocationCreate, LocationUpdate
+from app.models.schedule import Schedule
 
 
 def create_location(db: Session, data: LocationCreate) -> Location:
@@ -37,5 +38,11 @@ def update_location(db: Session, location_id: int, data: LocationUpdate) -> Loca
 
 def delete_location(db: Session, location_id: int) -> None:
     location = get_location(db, location_id)
+    in_use = db.query(Schedule).filter(Schedule.location_id == location_id).count()
+    if in_use:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"This location is still used by {in_use} schedule(s) (including archived ones). Point them to another location first.",
+        )
     db.delete(location)
     db.commit()

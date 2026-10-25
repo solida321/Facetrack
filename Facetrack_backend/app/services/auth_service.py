@@ -5,6 +5,7 @@ from app.core.security import create_access_token, hash_password, verify_passwor
 from app.models.role import Role
 from app.models.user import User
 from app.schemas.auth import LoginRequest, RegisterRequest
+from app.services.notification_service import notify
 
 
 def register_user(db: Session, request: RegisterRequest) -> User:
@@ -29,14 +30,32 @@ def register_user(db: Session, request: RegisterRequest) -> User:
         )
 
     user = User(
-        full_name=request.full_name,
+        full_name=request.full_name.strip(),
         email=request.email,
         password_hash=hash_password(request.password),
-        external_id=request.external_id,
+        phone=request.phone.strip() if request.phone else None,
+        external_id=request.external_id.strip() if request.external_id else None,
         role_id=employee_role.id,
         status="pending_approval",
     )
     db.add(user)
+    db.flush()  # gives the new user an id, still inside the same transaction
+
+    # Tell every active admin that someone is waiting to be approved.
+    admin_ids = (
+        db.query(User.id)
+        .join(Role, User.role_id == Role.id)
+        .filter(Role.name == "admin", User.status == "active")
+        .all()
+    )
+    for (admin_id,) in admin_ids:
+        notify(
+            db, admin_id,
+            "New account waiting",
+            f"{user.full_name} ({user.email}) registered and needs approval.",
+            "account_pending",
+        )
+
     db.commit()
     db.refresh(user)
     return user

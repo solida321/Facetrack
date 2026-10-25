@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
-
 import 'package:face_detection_tflite/face_detection_tflite.dart';
 import 'package:provider/provider.dart';
-import '../../../widgets/cover_camera_preview.dart';
 
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_text_styles.dart';
 import '../../../app/routes/app_routes.dart';
 import '../../../core/services/camera_service.dart';
 import '../../../core/controllers/auth_controller.dart';
+import '../../../core/network/api_error.dart';
 import '../../../core/network/face_profile_api.dart';
+import '../face_camera_view.dart';
+import '../face_quality.dart';
 
 class FaceRegistrationScreen extends StatefulWidget {
   const FaceRegistrationScreen({super.key});
@@ -19,11 +20,20 @@ class FaceRegistrationScreen extends StatefulWidget {
 }
 
 class _FaceRegistrationScreenState extends State<FaceRegistrationScreen> {
+  // The 2nd and 3rd photos must be turned to OPPOSITE sides.
   final _angles = ['front', 'left', 'right'];
+  final _instructions = const [
+    'Look straight at the camera.',
+    'Turn your head a little to ONE side.',
+    'Now turn your head to the OTHER side.',
+  ];
+
   int _currentAngleIndex = 0;
   bool _isCapturing = false;
   bool _isCameraReady = false;
+  bool _hasProblem = false;
   String _statusText = '';
+  double? _firstSideYaw; // remembers which way the 2nd photo was turned
 
   @override
   void initState() {
@@ -42,12 +52,25 @@ class _FaceRegistrationScreenState extends State<FaceRegistrationScreen> {
     super.dispose();
   }
 
+  void _fail(String text) {
+    if (!mounted) return;
+    setState(() {
+      _isCapturing = false;
+      _hasProblem = true;
+      _statusText = text;
+    });
+  }
+
   Future<void> _captureCurrentAngle() async {
     final auth = context.read<AuthController>();
     final userId = auth.currentUser?.id;
     if (userId == null) return;
 
-    setState(() { _isCapturing = true; _statusText = 'Capturing...'; });
+    setState(() {
+      _isCapturing = true;
+      _hasProblem = false;
+      _statusText = 'Capturing...';
+    });
 
     FaceDetector? detector;
     try {
@@ -59,11 +82,31 @@ class _FaceRegistrationScreenState extends State<FaceRegistrationScreen> {
       final faces = await detector.detectFacesFromBytes(bytes, mode: FaceDetectionMode.full);
 
       if (faces.isEmpty) {
-        setState(() { _isCapturing = false; _statusText = 'No face detected — try again'; });
+        _fail('No face detected. Try again.');
         return;
       }
       if (faces.length > 1) {
-        setState(() { _isCapturing = false; _statusText = 'More than one face detected — try again'; });
+        _fail('More than one face detected. Try again.');
+        return;
+      }
+
+      // Is the photo good enough?
+      final isFront = _currentAngleIndex == 0;
+      final quality = await FaceQuality.check(
+        faces.first,
+        bytes,
+        isFront ? FaceAngle.front : FaceAngle.side,
+      );
+      if (!quality.ok) {
+        _fail(quality.problem!);
+        return;
+      }
+
+      // The two side photos must face opposite ways.
+      if (_currentAngleIndex == 1) {
+        _firstSideYaw = quality.yaw;
+      } else if (_currentAngleIndex == 2 && _firstSideYaw != null && quality.yaw * _firstSideYaw! > 0) {
+        _fail('Turn to the OTHER side this time.');
         return;
       }
 
@@ -89,7 +132,8 @@ class _FaceRegistrationScreenState extends State<FaceRegistrationScreen> {
         }
       }
     } catch (e) {
-      setState(() { _isCapturing = false; _statusText = 'Failed: $e'; });
+      // Shows the server's sentence, e.g. "This photo does not look like your earlier photos."
+      _fail(apiErrorMessage(e, fallback: 'Something went wrong. Try again.'));
     } finally {
       await detector?.dispose();
     }
@@ -107,47 +151,56 @@ class _FaceRegistrationScreenState extends State<FaceRegistrationScreen> {
               Text('Register your face', style: AppTextStyles.heading),
               const SizedBox(height: 6),
               Text(
-                'We\'ll capture three angles so matching works reliably.',
+                'We capture three photos so matching works reliably. '
+                'Keep your whole face inside the oval.',
                 style: AppTextStyles.bodySoft,
                 textAlign: TextAlign.center,
               ),
-              const Spacer(),
+              const SizedBox(height: 16),
 
-              Container(
-                width: 220, height: 270,
-                decoration: BoxDecoration(
-                  border: Border.all(color: AppColors.accent, width: 2.5),
-                  borderRadius: BorderRadius.circular(140),
+              Expanded(
+                child: Center(
+                  child: _isCameraReady
+                      ? FaceCameraView(
+                          controller: CameraService.controller!,
+                          guideColor: _hasProblem ? AppColors.absent : Colors.white,
+                          hint: _instructions[_currentAngleIndex],
+                        )
+                      : const CircularProgressIndicator(color: AppColors.accent),
                 ),
-                clipBehavior: Clip.antiAlias,
-                child: _isCameraReady
-                    ? CoverCameraPreview(controller: CameraService.controller!)
-                    : const Center(child: CircularProgressIndicator(color: AppColors.accent)),
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 14),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(_angles.length, (i) {
                   final active = i == _currentAngleIndex;
+                  final done = i < _currentAngleIndex;
                   return Container(
                     margin: const EdgeInsets.symmetric(horizontal: 4),
-                    width: 9, height: 9,
+                    width: 9,
+                    height: 9,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: active ? AppColors.accent : AppColors.line,
+                      color: (active || done) ? AppColors.accent : AppColors.line,
                     ),
                   );
                 }),
               ),
-              const SizedBox(height: 10),
-              Text('Capturing: ${_angles[_currentAngleIndex]}', style: AppTextStyles.bodySoft),
+              const SizedBox(height: 8),
+              Text('Photo ${_currentAngleIndex + 1} of ${_angles.length}', style: AppTextStyles.bodySoft),
               if (_statusText.isNotEmpty) ...[
                 const SizedBox(height: 6),
-                Text(_statusText, style: AppTextStyles.bodySoft, textAlign: TextAlign.center),
+                Text(
+                  _statusText,
+                  style: AppTextStyles.bodySoft.copyWith(
+                    color: _hasProblem ? AppColors.absent : null,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ],
 
-              const Spacer(),
+              const SizedBox(height: 14),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(

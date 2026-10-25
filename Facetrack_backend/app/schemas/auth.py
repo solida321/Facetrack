@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 class RegisterRequest(BaseModel):
@@ -6,10 +6,12 @@ class RegisterRequest(BaseModel):
     Role always defaults to employee and status to pending_approval —
     nobody can register themselves as an admin through this endpoint.
     """
-    full_name: str
+    full_name: str = Field(..., min_length=2, max_length=150)
     email: EmailStr
-    password: str
-    external_id: str | None = None
+    # At least 8 characters. At most 72, because the password hashing (bcrypt) ignores the rest.
+    password: str = Field(..., min_length=8, max_length=72)
+    phone: str | None = Field(default=None, min_length=8, max_length=30, pattern=r"^[0-9+\- ]+$")
+    external_id: str | None = Field(default=None, max_length=50)  # employee / student id
 
 
 class LoginRequest(BaseModel):

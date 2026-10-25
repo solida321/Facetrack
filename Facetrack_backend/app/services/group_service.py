@@ -4,6 +4,7 @@ from fastapi import HTTPException, status
 
 from app.models.group import Group
 from app.schemas.group import GroupCreate, GroupUpdate
+from sqlalchemy.exc import IntegrityError 
 
 
 def create_group(db: Session, data: GroupCreate) -> Group:
@@ -42,4 +43,11 @@ def update_group(db: Session, group_id: int, data: GroupUpdate) -> Group:
 def delete_group(db: Session, group_id: int) -> None:
     group = get_group(db, group_id)
     db.delete(group)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This group still has users or schedules. Move or remove them first.",
+        )

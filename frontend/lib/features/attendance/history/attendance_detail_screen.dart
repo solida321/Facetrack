@@ -9,6 +9,10 @@ class AttendanceDetailScreen extends StatelessWidget {
   final AttendanceRecordModel record;
   const AttendanceDetailScreen({super.key, required this.record});
 
+  String _time(DateTime? t) => t == null
+      ? '—'
+      : '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -19,18 +23,33 @@ class AttendanceDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _row('Check-in', record.checkInTime != null
-                ? '${record.checkInTime!.hour.toString().padLeft(2, '0')}:${record.checkInTime!.minute.toString().padLeft(2, '0')}'
-                : '—'),
-            _row('Check-out', record.checkOutTime != null
-                ? '${record.checkOutTime!.hour.toString().padLeft(2, '0')}:${record.checkOutTime!.minute.toString().padLeft(2, '0')}'
-                : '—'),
+            _row('Check-in', _time(record.checkInTime)),
+            _row('Check-out', record.missingCheckout ? 'Missing' : _time(record.checkOutTime)),
             _row('Status', record.status ?? '—'),
+            if (record.leftEarly) _row('Note', 'Left early'),
+            if (record.missingCheckout) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.lateBg,
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: Text(
+                  'You did not check out. Tap "Report a mistake" and enter your real check-out time.',
+                  style: AppTextStyles.bodySoft,
+                ),
+              ),
+            ],
             const Spacer(),
             OutlinedButton(
               onPressed: () {
                 Navigator.push(context, MaterialPageRoute(
-                  builder: (_) => CorrectionRequestScreen(attendanceRecordId: record.id),
+                  builder: (_) => CorrectionRequestScreen(
+                    attendanceRecordId: record.id,
+                    attendanceDate: record.attendanceDate,
+                    askCheckOut: record.missingCheckout || record.checkOutTime == null,
+                  ),
                 ));
               },
               style: OutlinedButton.styleFrom(

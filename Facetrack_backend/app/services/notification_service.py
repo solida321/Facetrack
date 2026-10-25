@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 
 from app.models.notification import Notification
+from app.models.role import Role
+from app.models.user import User
 from app.schemas.notification import NotificationCreate
 
 
@@ -25,11 +27,61 @@ def get_notifications_by_user(db: Session, user_id: int) -> list[Notification]:
     return db.query(Notification).filter(Notification.user_id == user_id).order_by(Notification.created_at.desc()).all()
 
 
-def mark_as_read(db: Session, notification_id: int) -> Notification:
+def mark_as_read(db: Session, notification_id: int, user_id: int) -> Notification:
     notification = db.query(Notification).filter(Notification.id == notification_id).first()
-    if not notification:
+    # Someone else's notification is reported as "not found" so ids can't be probed.
+    if not notification or notification.user_id != user_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
     notification.is_read = True
     db.commit()
     db.refresh(notification)
     return notification
+
+
+def notify(db: Session, user_id: int, title: str, message: str, type: str) -> None:
+    """Adds one notification to the session. The caller commits, so the
+    notification is saved in the same transaction as the thing it talks about."""
+    db.add(Notification(user_id=user_id, title=title, message=message, type=type))
+
+
+def approver_ids_for(db: Session, person: User) -> list[int]:
+    """Who must review this person's requests: active managers in the same
+    team. If there is no manager (or no team), every active admin."""
+    ids: list[int] = []
+    if person.group_id is not None:
+        rows = (
+            db.query(User.id)
+            .join(Role, User.role_id == Role.id)
+            .filter(User.group_id == person.group_id, User.status == "active",
+                    Role.name == "manager", User.id != person.id)
+            .all()
+        )
+        ids = [r[0] for r in rows]
+    if not ids:
+        rows = (
+            db.query(User.id)
+            .join(Role, User.role_id == Role.id)
+            .filter(User.status == "active", Role.name == "admin", User.id != person.id)
+            .all()
+        )
+        ids = [r[0] for r in rows]
+    return ids
+
+
+def notify_approvers(db: Session, person: User, title: str, message: str, type: str) -> None:
+    for uid in approver_ids_for(db, person):
+        notify(db, uid, title, message, type)
+
+
+def count_unread(db: Session, user_id: int) -> int:
+    return db.query(Notification).filter(
+        Notification.user_id == user_id, Notification.is_read.is_(False)
+    ).count()
+
+
+def mark_all_read(db: Session, user_id: int) -> int:
+    changed = db.query(Notification).filter(
+        Notification.user_id == user_id, Notification.is_read.is_(False)
+    ).update({"is_read": True})
+    db.commit()
+    return changed

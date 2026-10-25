@@ -4,13 +4,22 @@ from fastapi import HTTPException, status
 from app.models.user import User
 from app.schemas.user import UserUpdate
 
+
+from sqlalchemy.exc import IntegrityError
+
 from app.core.security import hash_password
 from app.schemas.user import UserCreateByAdmin
 
 
 
-def get_all_users(db: Session) -> list[User]:
-    return db.query(User).all()
+def get_all_users(db: Session, actor: User | None = None) -> list[User]:
+    """Admin: everyone. Manager: only people in their own group."""
+    query = db.query(User)
+    if actor is not None and actor.role and actor.role.name != "admin":
+        if actor.group_id is None:
+            return []
+        query = query.filter(User.group_id == actor.group_id)
+    return query.order_by(User.id).all()
 
 
 def update_user(db: Session, user_id: int, data: UserUpdate) -> User:
@@ -52,4 +61,11 @@ def delete_user(db: Session, user_id: int) -> None:
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     db.delete(user)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This user has attendance or other records and cannot be deleted. Set the status to inactive instead.",
+        )

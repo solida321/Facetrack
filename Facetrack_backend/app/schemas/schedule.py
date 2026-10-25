@@ -11,7 +11,7 @@ class ScheduleCreate(BaseModel):
     start_time: time
     end_time: time
     grace_period_minutes: int = Field(default=10, ge=0)
-    location_id: int | None = None
+    location_id: int 
 
     @model_validator(mode="after")
     def check_day_or_date(self):
