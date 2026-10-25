@@ -4,7 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ApiClient {
   static final Dio dio = Dio(
-    BaseOptions(baseUrl: 'http://192.168.1.37:8000'), // FastAPI base URL
+    BaseOptions(baseUrl: 'http://192.168.100.120:8000'), // FastAPI base URL
   );
 
   static final _storage = const FlutterSecureStorage();
@@ -14,5 +14,9 @@ class ApiClient {
     if (token != null) {
       dio.options.headers['Authorization'] = 'Bearer $token';
     }
+  }
+
+  static void clearToken() {
+    dio.options.headers.remove('Authorization');
   }
 }

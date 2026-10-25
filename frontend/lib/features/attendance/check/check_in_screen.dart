@@ -43,11 +43,11 @@ class _CheckInScreenState extends State<CheckInScreen> {
       setState(() => _statusText = 'Verifying and checking in...');
 
       final record = await AttendanceApi.checkIn(
-        scheduleId: widget.scheduleId,
-        userId: userId,
-        latitude: position.latitude,
-        longitude: position.longitude,
-        faceEmbedding: widget.faceEmbedding,
+       scheduleId: widget.scheduleId,
+       userId: userId,
+      latitude: position.latitude,
+       longitude: position.longitude,
+      faceEmbedding: widget.faceEmbedding,
       );
 
       setState(() => _result = record);
@@ -71,7 +71,6 @@ class _CheckInScreenState extends State<CheckInScreen> {
   if (msg.contains('No registered face')) return 'You have not completed face registration yet.';
   if (msg.contains('Too early')) return 'Too early to check in — please wait until closer to your shift start time.';
   if (msg.contains('permission')) return 'Location permission is needed to check in.';
-  if (msg.contains('already ended')) return 'This shift has already ended.';
   return 'Check-in failed. Please try again.';
 }
   @override

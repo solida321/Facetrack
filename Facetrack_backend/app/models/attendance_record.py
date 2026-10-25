@@ -34,6 +34,13 @@ class AttendanceRecord(Base):
     check_in_longitude = Column(Numeric(9, 6), nullable=True)
     check_in_device_id = Column(String(100), nullable=True)
     verification_method = Column(String(20), nullable=False, default="face")
+    check_out_latitude = Column(Numeric(9, 6), nullable=True)
+    check_out_longitude = Column(Numeric(9, 6), nullable=True)
+    # NULL        = not checked out yet (or an old record / absent record)
+    # 'on_time'   = checked out at or after the shift end
+    # 'early_leave' = checked out before the shift end (allowed, but visible)
+    # 'missing'   = nobody checked out in time (set by the job; the time is never invented)
+    check_out_status = Column(String(20), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     schedule = relationship("Schedule")

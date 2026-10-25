@@ -1,7 +1,7 @@
 // attendance_api.dart
 import '../../data/models/attendance_record_model.dart';
 import 'api_client.dart';
-
+import 'package:dio/dio.dart';
 class AttendanceApi {
   static Future<AttendanceRecordModel> checkIn({
   required int scheduleId,
@@ -43,4 +43,30 @@ class AttendanceApi {
   final res = await ApiClient.dio.get('/attendance/');
   return (res.data as List).map((e) => AttendanceRecordModel.fromJson(e)).toList();
 }
+
+static Future<void> markAbsences() async {
+await ApiClient.dio.post('/attendance/mark-absences');
+} 
+
+  /// The attendance report as CSV text (admin: everyone, manager: own team).
+  /// Dates are sent as yyyy-MM-dd.
+  static Future<String> exportCsv({
+    required DateTime from,
+    required DateTime to,
+    int? groupId,
+  }) async {
+    String d(DateTime x) =>
+        '${x.year}-${x.month.toString().padLeft(2, '0')}-${x.day.toString().padLeft(2, '0')}';
+    final res = await ApiClient.dio.get(
+      '/attendance/export',
+      queryParameters: {
+        'date_from': d(from),
+        'date_to': d(to),
+        'group_id': ?groupId,
+      },
+      options: Options(responseType: ResponseType.plain),
+    );
+    return res.data as String;
+  }
+
 }

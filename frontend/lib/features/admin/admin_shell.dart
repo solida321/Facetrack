@@ -5,7 +5,10 @@ import 'users/user_management_screen.dart';
 import 'approvals/approvals_screen.dart';
 import '../profile/user_profile_screen.dart';
 import 'schedules/schedule_management_screen.dart';
+
 import 'groups/group_management_screen.dart';
+
+
 
 class AdminShell extends StatefulWidget {
   const AdminShell({super.key});
@@ -52,7 +55,7 @@ class _AdminShellState extends State<AdminShell> {
           NavigationDestination(
             icon: Icon(Icons.groups_outlined),
             selectedIcon: Icon(Icons.groups_rounded),
-            label: 'Teams',
+            label: 'Groups',
           ),
           NavigationDestination(
             icon: Icon(Icons.fact_check_outlined),

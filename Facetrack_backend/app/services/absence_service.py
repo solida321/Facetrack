@@ -4,15 +4,17 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.attendance_record import AttendanceRecord
+from app.models.notification import Notification
 from app.models.leave_request import LeaveRequest
 from app.models.role import Role
 from app.models.schedule import Schedule
 from app.models.user import User
+from app.services.attendance_service import CHECKOUT_WINDOW_HOURS, shift_end_of
 
 CAMBODIA_TZ = timezone(timedelta(hours=7))
 
 
-def mark_absences(db: Session, days_back: int = 7) -> int:
+def mark_absences(db: Session, days_back: int = 30) -> int:
     """Creates an 'absent' record for every active member who had a shift
     that already ended and has no attendance record for it. Returns how
     many records were created."""
@@ -73,6 +75,13 @@ def mark_absences(db: Session, days_back: int = 7) -> int:
                     status="absent",
                     verification_method="none",
                 ))
+                db.add(Notification(
+                    user_id=u.id,
+                    title="Marked absent",
+                    message=f"You were marked absent on {day} ({s.start_time.strftime('%H:%M')}-{s.end_time.strftime('%H:%M')}). "
+                            "If this is wrong, send a correction request.",
+                    type="absent",
+                ))
                 created += 1
 
     try:
@@ -81,3 +90,43 @@ def mark_absences(db: Session, days_back: int = 7) -> int:
         db.rollback()  # a live check-in raced us; the next run retries
         return 0
     return created
+
+
+def mark_missing_checkouts(db: Session, days_back: int = 30) -> int:
+    """Marks records as "missing" where the person checked in but never checked out, and the
+    check-out window is over. It does NOT invent a check-out time: the employee
+    must send a correction request with the real time. Each record is flagged
+    once, and the employee is told once."""
+    now = datetime.now(CAMBODIA_TZ)
+    since = (now - timedelta(days=days_back)).date()
+
+    records = (
+        db.query(AttendanceRecord)
+        .filter(
+            AttendanceRecord.check_in_time.isnot(None),
+            AttendanceRecord.check_out_time.is_(None),
+            AttendanceRecord.check_out_status.is_(None),
+            AttendanceRecord.attendance_date >= since,
+        )
+        .all()
+    )
+
+    flagged = 0
+    for r in records:
+        schedule = db.query(Schedule).filter(Schedule.id == r.schedule_id).first()
+        if schedule is None:
+            continue
+        if now <= shift_end_of(r, schedule) + timedelta(hours=CHECKOUT_WINDOW_HOURS):
+            continue  # still inside the check-out window
+        r.check_out_status = "missing"
+        db.add(Notification(
+            user_id=r.user_id,
+            title="Missing check-out",
+            message=f"You did not check out on {r.attendance_date}. "
+                    "Send a correction request with your real check-out time.",
+            type="missing_checkout",
+        ))
+        flagged += 1
+
+    db.commit()
+    return flagged

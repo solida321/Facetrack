@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import '../../../widgets/cover_camera_preview.dart';
 import 'package:face_detection_tflite/face_detection_tflite.dart';
 
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_text_styles.dart';
 import '../../../core/services/camera_service.dart';
 import '../../attendance/check/check_in_screen.dart';
+import '../face_camera_view.dart';
+import '../face_quality.dart';
 
 class FaceScanScreen extends StatefulWidget {
   final int scheduleId;
@@ -18,7 +19,8 @@ class FaceScanScreen extends StatefulWidget {
 class _FaceScanScreenState extends State<FaceScanScreen> {
   bool _isCameraReady = false;
   bool _isChecking = false;
-  String _statusText = 'Align your face in the frame';
+  bool _hasProblem = false;
+  String _statusText = 'Keep your whole face inside the oval and look straight at the camera';
 
   @override
   void initState() {
@@ -37,8 +39,21 @@ class _FaceScanScreenState extends State<FaceScanScreen> {
     super.dispose();
   }
 
+  void _fail(String text) {
+    if (!mounted) return;
+    setState(() {
+      _isChecking = false;
+      _hasProblem = true;
+      _statusText = text;
+    });
+  }
+
   Future<void> _captureAndVerify() async {
-    setState(() { _isChecking = true; _statusText = 'Checking...'; });
+    setState(() {
+      _isChecking = true;
+      _hasProblem = false;
+      _statusText = 'Checking...';
+    });
 
     FaceDetector? detector;
     try {
@@ -49,11 +64,18 @@ class _FaceScanScreenState extends State<FaceScanScreen> {
       final faces = await detector.detectFacesFromBytes(bytes, mode: FaceDetectionMode.full);
 
       if (faces.isEmpty) {
-        setState(() { _isChecking = false; _statusText = 'No face detected — try again with better lighting'; });
+        _fail('No face detected. Try again with better lighting.');
         return;
       }
       if (faces.length > 1) {
-        setState(() { _isChecking = false; _statusText = 'More than one face detected — make sure only you are in frame'; });
+        _fail('More than one face detected. Make sure only you are in the frame.');
+        return;
+      }
+
+      // Is the photo good enough? (whole face, size, centre, eyes, direction, light)
+      final quality = await FaceQuality.check(faces.first, bytes, FaceAngle.front);
+      if (!quality.ok) {
+        _fail(quality.problem!);
         return;
       }
 
@@ -68,7 +90,7 @@ class _FaceScanScreenState extends State<FaceScanScreen> {
         );
       }
     } catch (e) {
-      setState(() { _isChecking = false; _statusText = 'Something went wrong — try again'; });
+      _fail('Something went wrong. Try again.');
     } finally {
       await detector?.dispose();
     }
@@ -84,22 +106,31 @@ class _FaceScanScreenState extends State<FaceScanScreen> {
             const SizedBox(height: 20),
             Text('Checking in', style: AppTextStyles.heading),
             const SizedBox(height: 6),
-            Text(_statusText, style: AppTextStyles.bodySoft, textAlign: TextAlign.center),
-            const SizedBox(height: 20),
-            Expanded(
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 40),
-                decoration: BoxDecoration(
-                  border: Border.all(color: AppColors.accent, width: 2.5),
-                  borderRadius: BorderRadius.circular(24),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Text(
+                _statusText,
+                style: AppTextStyles.bodySoft.copyWith(
+                  color: _hasProblem ? AppColors.absent : null,
                 ),
-                clipBehavior: Clip.antiAlias,
-                child: _isCameraReady
-                    ? CoverCameraPreview(controller: CameraService.controller!)
-                    : const Center(child: CircularProgressIndicator(color: AppColors.accent)),
+                textAlign: TextAlign.center,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
+            Expanded(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: _isCameraReady
+                      ? FaceCameraView(
+                          controller: CameraService.controller!,
+                          guideColor: _hasProblem ? AppColors.absent : Colors.white,
+                        )
+                      : const CircularProgressIndicator(color: AppColors.accent),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: SizedBox(

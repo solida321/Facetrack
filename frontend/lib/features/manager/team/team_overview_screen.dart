@@ -35,7 +35,9 @@ class _TeamOverviewScreenState extends State<TeamOverviewScreen> {
     }
     try {
       final allUsers = await UserApi.getAll();
-      final team = allUsers.where((u) => u.groupId == groupId).toList();
+      final team = allUsers
+          .where((u) => u.groupId == groupId && u.role.name == 'employee')
+          .toList();
       setState(() {
         _team = team;
         _isLoading = false;

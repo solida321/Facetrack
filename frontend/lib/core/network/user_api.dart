@@ -56,5 +56,13 @@ static Future<UserModel> create({
 static Future<void> delete(int userId) async {
   await ApiClient.dio.delete('/users/$userId');
 }
+
+
+  static Future<void> changePassword({required String oldPassword, required String newPassword}) async {
+    await ApiClient.dio.put('/users/me/password', data: {
+      'old_password': oldPassword,
+      'new_password': newPassword,
+    });
+  }  
 }
 

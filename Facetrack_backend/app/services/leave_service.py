@@ -45,7 +45,7 @@ def get_all_leave_requests(db: Session) -> list[LeaveRequest]:
 def review_leave_request(db: Session, leave_id: int, reviewer_id: int, data: LeaveRequestReview) -> LeaveRequest:
     leave = get_leave_request(db, leave_id)
     if leave.status != "pending":
-        raise HTTPException(...)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This request has already been reviewed")
 
     leave.status = data.status
     leave.reviewed_by = reviewer_id

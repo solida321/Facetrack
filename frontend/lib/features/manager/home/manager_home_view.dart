@@ -9,13 +9,15 @@ import '../../../core/network/correction_api.dart';
 import '../../../core/network/leave_api.dart';
 import '../../../core/network/user_api.dart';
 import '../../../widgets/stat_card.dart';
+import '../../notifications/notification_bell.dart';
+import '../../reports/attendance_report_screen.dart';
 
 class ManagerHomeView extends StatefulWidget {
   const ManagerHomeView({super.key});
 
   @override
   State<ManagerHomeView> createState() => _ManagerHomeViewState();
-}
+}  
 
 class _ManagerHomeViewState extends State<ManagerHomeView> {
   int _teamSize = 0;
@@ -52,7 +54,10 @@ class _ManagerHomeViewState extends State<ManagerHomeView> {
       final team = users
           .where(
             (u) =>
-                u.groupId == groupId && u.id != user.id && u.status == 'active',
+                u.groupId == groupId &&
+                u.id != user.id &&
+                u.status == 'active' &&
+                u.role.name == 'employee',
           )
           .toList();
       final teamIds = team.map((u) => u.id).toSet();
@@ -138,6 +143,7 @@ class _ManagerHomeViewState extends State<ManagerHomeView> {
                           ),
                         ),
                         const Spacer(),
+                        const NotificationBell(),
                         _rolePill(),
                       ],
                     ),
@@ -148,6 +154,8 @@ class _ManagerHomeViewState extends State<ManagerHomeView> {
                     ),
                     const SizedBox(height: 2),
                     Text(dateLabel, style: AppTextStyles.bodySoft),
+                    const SizedBox(height: 14),
+                    const AttendanceReportButton(),
                     const SizedBox(height: 18),
 
                     if (!_hasGroup)

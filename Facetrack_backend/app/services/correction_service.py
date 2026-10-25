@@ -11,9 +11,18 @@ from app.schemas.correction_request import CorrectionRequestCreate, CorrectionRe
 
 def create_correction_request(db: Session, requested_by: int, data: CorrectionRequestCreate) -> CorrectionRequest:
     record = db.query(AttendanceRecord).filter(AttendanceRecord.id == data.attendance_record_id).first()
-    if not record:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attendance record not found")
+    
+    if record.user_id != requested_by:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You can only request corrections for your own attendance")
+    if record.status == "present":
+        raise HTTPException(status_code=400, detail="Present records cannot be corrected")
 
+    already_pending = db.query(CorrectionRequest).filter(
+        CorrectionRequest.attendance_record_id == data.attendance_record_id,
+        CorrectionRequest.status == "pending",
+    ).first()
+    if already_pending:
+        raise HTTPException(status_code=400, detail="A correction for this record is already pending")
     correction = CorrectionRequest(
         attendance_record_id=data.attendance_record_id,
         requested_by=requested_by,

@@ -35,8 +35,8 @@ class CorrectionRequestModel {
   Map<String, dynamic> toJson() => {
         'attendance_record_id': attendanceRecordId,
         'requested_status': requestedStatus,
-        'requested_check_in_time': requestedCheckInTime?.toIso8601String(),
-        'requested_check_out_time': requestedCheckOutTime?.toIso8601String(),
+        'requested_check_in_time': requestedCheckInTime?.toUtc().toIso8601String(),
+        'requested_check_out_time': requestedCheckOutTime?.toUtc().toIso8601String(),
         'reason': reason,
       };
 }

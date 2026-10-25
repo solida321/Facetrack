@@ -1,4 +1,5 @@
 import math
+import os
 
 
 def cosine_similarity(a: list[float], b: list[float]) -> float:
@@ -13,7 +14,13 @@ def cosine_similarity(a: list[float], b: list[float]) -> float:
     return dot / (norm_a * norm_b)
 
 
-MATCH_THRESHOLD = 0.6  # matches the package's "very likely same person" cutoff
+# Check-in must be STRICT: letting a wrong person in is worse than asking a right
+# person to scan again. Change it without editing code: FACE_MATCH_THRESHOLD=0.75
+MATCH_THRESHOLD = float(os.getenv("FACE_MATCH_THRESHOLD", "0.7"))
+
+# Registration only asks "is this face already used by another account?",
+# so it keeps the older, looser cutoff on purpose (it catches more duplicates).
+DUPLICATE_THRESHOLD = 0.6
 
 
 def best_match_score(new_embedding: list[float], stored_embeddings: list[list[float]]) -> float:
