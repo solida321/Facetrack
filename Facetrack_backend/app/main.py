@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routers import face_profile, group
@@ -5,6 +7,7 @@ from app.api.routers import auth, schedule, attendance, leave_request, correctio
 from app.api.routers import location
 from app.api.routers import role
 from app.api.routers import report
+from datetime import date
 
 import asyncio
 from contextlib import asynccontextmanager
@@ -13,11 +16,17 @@ from app.core.database import SessionLocal
 from app.services.absence_service import mark_absences, mark_missing_checkouts
 
 
-# --- Absence job: must be defined BEFORE app = FastAPI(...) uses it ---
+
+# Day the real system started. Nothing before this day is marked absent.
+ABSENCE_START_DATE = date(2026, 10, 1)
+
+
 def _run_absence_job():
     db = SessionLocal()
     try:
-        mark_absences(db, days_back=2)  # first run: today + yesterday only
+        # Go back to the start date, so days missed while the server was off are filled in.
+        days_back = (date.today() - ABSENCE_START_DATE).days + 1
+        mark_absences(db, days_back=max(days_back, 2))
         mark_missing_checkouts(db)
     finally:
         db.close()

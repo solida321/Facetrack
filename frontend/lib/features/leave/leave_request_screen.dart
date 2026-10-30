@@ -6,6 +6,10 @@ import '../../app/theme/app_text_styles.dart';
 import '../../core/controllers/auth_controller.dart';
 import '../../core/network/leave_api.dart';
 import '../../data/models/leave_request_model.dart';
+import '../../widgets/app_text_field.dart';
+import '../../widgets/bloom_card.dart';
+import '../../widgets/primary_button.dart';
+import '../../widgets/status_pill.dart';
 
 class LeaveRequestScreen extends StatefulWidget {
   const LeaveRequestScreen({super.key});
@@ -137,51 +141,21 @@ class _LeaveRequestScreenState extends State<LeaveRequestScreen> {
             const SizedBox(height: 12),
             _dateField('To', _dateTo, () => _pickDate(false)),
             const SizedBox(height: 14),
-            Text('Reason', style: AppTextStyles.label),
-            const SizedBox(height: 6),
-            TextField(
+            AppTextField(
+              label: 'Reason',
               controller: _reasonController,
               maxLines: 3,
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: AppColors.panel,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(13),
-                  borderSide: const BorderSide(color: AppColors.line),
-                ),
-              ),
             ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isSubmitting ? null : _submit,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-                child: _isSubmitting
-                    ? const SizedBox(
-                        height: 18,
-                        width: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text(
-                        'Submit request',
-                        style: TextStyle(
-                          fontFamily: 'Sora',
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-              ),
+            const SizedBox(height: 18),
+            PrimaryButton(
+              label: 'Submit request',
+              isLoading: _isSubmitting,
+              onPressed: _isSubmitting ? null : _submit,
             ),
 
-            const SizedBox(height: 24),
-            Text('My requests', style: AppTextStyles.label),
-            const SizedBox(height: 8),
+            const SizedBox(height: 26),
+            Text('My requests', style: AppTextStyles.subheading),
+            const SizedBox(height: 10),
 
             if (_myLeaves.isEmpty)
               Padding(
@@ -193,56 +167,54 @@ class _LeaveRequestScreenState extends State<LeaveRequestScreen> {
               )
             else
               ..._myLeaves.map(
-                (l) => Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.panel,
-                    border: Border.all(color: AppColors.line),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${l.dateFrom.day}/${l.dateFrom.month} – ${l.dateTo.day}/${l.dateTo.month}',
-                            style: const TextStyle(
-                              fontFamily: 'Sora',
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12.5,
-                            ),
+                (l) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: BloomCard(
+                    padding: const EdgeInsets.all(14),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: AppColors.primarySoft,
+                            borderRadius: BorderRadius.circular(14),
                           ),
-                          if (l.reason != null && l.reason!.isNotEmpty) ...[
-                            const SizedBox(height: 2),
-                            Text(l.reason!, style: AppTextStyles.bodySoft),
-                          ],
-                        ],
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 9,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _statusBg(l.status),
-                          borderRadius: BorderRadius.circular(100),
-                        ),
-                        child: Text(
-                          l.status,
-                          style: TextStyle(
-                            color: _statusColor(l.status),
-                            fontWeight: FontWeight.w700,
-                            fontSize: 9.5,
+                          child: const Icon(
+                            Icons.event_available_rounded,
+                            color: AppColors.primaryDeep,
+                            size: 22,
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${l.dateFrom.day}/${l.dateFrom.month} – ${l.dateTo.day}/${l.dateTo.month}',
+                                style: const TextStyle(
+                                  fontFamily: 'Sora',
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 14,
+                                  color: AppColors.ink,
+                                ),
+                              ),
+                              if (l.reason != null && l.reason!.isNotEmpty) ...[
+                                const SizedBox(height: 2),
+                                Text(l.reason!, style: AppTextStyles.bodySoft),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        StatusPill(
+                          text: l.status,
+                          color: _statusColor(l.status),
+                          background: _statusBg(l.status),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -253,27 +225,23 @@ class _LeaveRequestScreenState extends State<LeaveRequestScreen> {
   }
 
   Widget _dateField(String label, DateTime? value, VoidCallback onTap) {
-    return GestureDetector(
+    return BloomCard(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-        decoration: BoxDecoration(
-          color: AppColors.panel,
-          border: Border.all(color: AppColors.line),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(label, style: AppTextStyles.bodySoft),
-            Text(
-              value == null
-                  ? 'Select date'
-                  : '${value.day}/${value.month}/${value.year}',
-              style: AppTextStyles.body,
-            ),
-          ],
-        ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      child: Row(
+        children: [
+          const Icon(Icons.calendar_today_rounded,
+              size: 20, color: AppColors.primaryDeep),
+          const SizedBox(width: 12),
+          Text(label, style: AppTextStyles.bodySoft),
+          const Spacer(),
+          Text(
+            value == null
+                ? 'Select date'
+                : '${value.day}/${value.month}/${value.year}',
+            style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w700),
+          ),
+        ],
       ),
     );
   }

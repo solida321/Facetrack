@@ -11,6 +11,8 @@ import '../../../core/network/api_error.dart';
 import '../../../core/network/face_profile_api.dart';
 import '../face_camera_view.dart';
 import '../face_quality.dart';
+import '../../../widgets/info_banner.dart';
+import '../../../widgets/primary_button.dart';
 
 class FaceRegistrationScreen extends StatefulWidget {
   const FaceRegistrationScreen({super.key});
@@ -141,22 +143,24 @@ class _FaceRegistrationScreenState extends State<FaceRegistrationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    const stepLabels = ['Front', 'One side', 'Other side'];
+
     return Scaffold(
-      backgroundColor: AppColors.panel,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Register your face', style: AppTextStyles.heading),
+              Text('Register your face', style: AppTextStyles.headline),
               const SizedBox(height: 6),
               Text(
-                'We capture three photos so matching works reliably. '
+                'We take three photos so matching works reliably. '
                 'Keep your whole face inside the oval.',
                 style: AppTextStyles.bodySoft,
-                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
 
               Expanded(
                 child: Center(
@@ -166,54 +170,79 @@ class _FaceRegistrationScreenState extends State<FaceRegistrationScreen> {
                           guideColor: _hasProblem ? AppColors.absent : Colors.white,
                           hint: _instructions[_currentAngleIndex],
                         )
-                      : const CircularProgressIndicator(color: AppColors.accent),
+                      : const CircularProgressIndicator(color: AppColors.primary),
                 ),
               ),
 
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               Row(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(_angles.length, (i) {
                   final active = i == _currentAngleIndex;
                   final done = i < _currentAngleIndex;
-                  return Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    width: 9,
-                    height: 9,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: (active || done) ? AppColors.accent : AppColors.line,
+                  return Expanded(
+                    child: Container(
+                      margin: EdgeInsets.only(right: i == _angles.length - 1 ? 0 : 8),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: done ? AppColors.primarySoft : Colors.white,
+                        border: Border.all(
+                          color: active ? AppColors.primaryDeep : AppColors.line,
+                          width: active ? 1.5 : 1,
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            done ? Icons.check_circle_rounded : Icons.circle_outlined,
+                            size: 18,
+                            color: (done || active) ? AppColors.primary : AppColors.inkSoft,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            stepLabels[i],
+                            style: AppTextStyles.label.copyWith(
+                              color: (done || active) ? AppColors.primaryDeep : AppColors.inkSoft,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 }),
               ),
               const SizedBox(height: 8),
-              Text('Photo ${_currentAngleIndex + 1} of ${_angles.length}', style: AppTextStyles.bodySoft),
-              if (_statusText.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(
-                  _statusText,
-                  style: AppTextStyles.bodySoft.copyWith(
-                    color: _hasProblem ? AppColors.absent : null,
-                  ),
-                  textAlign: TextAlign.center,
+              Center(
+                child: Text(
+                  'Photo ${_currentAngleIndex + 1} of ${_angles.length}',
+                  style: AppTextStyles.bodySoft,
                 ),
+              ),
+              if (_statusText.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                if (_hasProblem)
+                  InfoBanner(
+                    icon: Icons.error_outline_rounded,
+                    title: _statusText,
+                    tone: BannerTone.bad,
+                  )
+                else
+                  Center(
+                    child: Text(
+                      _statusText,
+                      style: AppTextStyles.bodySoft,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
               ],
 
               const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: (_isCameraReady && !_isCapturing) ? _captureCurrentAngle : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accent,
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
-                  ),
-                  child: _isCapturing
-                      ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Text('Capture', style: TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.w700, color: AppColors.accentInk)),
-                ),
+              PrimaryButton(
+                label: 'Capture',
+                icon: Icons.face_retouching_natural_rounded,
+                onPressed: (_isCameraReady && !_isCapturing) ? _captureCurrentAngle : null,
+                isLoading: _isCapturing,
               ),
             ],
           ),

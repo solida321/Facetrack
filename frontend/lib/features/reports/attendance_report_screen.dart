@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
+import '../../core/controllers/auth_controller.dart';
 import '../../core/network/api_error.dart';
 import '../../core/network/attendance_api.dart';
 import '../../core/network/group_api.dart';
@@ -11,6 +13,10 @@ import '../../core/utils/date_formatter.dart';
 import '../../data/models/attendance_record_model.dart';
 import '../../data/models/group_model.dart';
 import '../../data/models/user_model.dart';
+import '../../widgets/bloom_card.dart';
+import '../../widgets/empty_state.dart';
+import '../../widgets/filter_chips.dart';
+import '../../widgets/outline_button.dart';
 import '../../widgets/status_pill.dart';
 
 /// Small button for the manager and admin home screens.
@@ -21,19 +27,12 @@ class AttendanceReportButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
-      child: OutlinedButton.icon(
+      child: AppOutlineButton(
+        label: 'Attendance report',
+        icon: Icons.assessment_outlined,
         onPressed: () => Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const AttendanceReportScreen()),
-        ),
-        icon: const Icon(Icons.assessment_outlined, size: 18, color: AppColors.primary),
-        label: const Text(
-          'Attendance report',
-          style: TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.w600, color: AppColors.primary),
-        ),
-        style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: AppColors.primary),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
         ),
       ),
     );
@@ -123,11 +122,19 @@ class _AttendanceReportScreenState extends State<AttendanceReportScreen> {
     if (picked != null) setState(() => _range = picked);
   }
 
+  // Admin sees every team. A manager only ever sees and exports their own team.
+  bool get _isAdmin => context.read<AuthController>().currentUser?.role.name == 'admin';
+
   /// Copies the CSV text. Paste it into Excel or Google Sheets.
   Future<void> _export() async {
     setState(() => _isExporting = true);
     try {
-      final csv = await AttendanceApi.exportCsv(from: _range.start, to: _range.end, groupId: _groupFilter);
+      final ownGroup = context.read<AuthController>().currentUser?.groupId;
+      final csv = await AttendanceApi.exportCsv(
+        from: _range.start,
+        to: _range.end,
+        groupId: _isAdmin ? _groupFilter : ownGroup,
+      );
       await Clipboard.setData(ClipboardData(text: csv));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -145,16 +152,7 @@ class _AttendanceReportScreenState extends State<AttendanceReportScreen> {
 
   String _day(DateTime d) => '${d.day}/${d.month}/${d.year}';
 
-  Widget _chip(String value, String label) => Padding(
-        padding: const EdgeInsets.only(right: 8),
-        child: ChoiceChip(
-          label: Text(label),
-          selected: _statusFilter == value,
-          onSelected: (_) => setState(() => _statusFilter = value),
-          selectedColor: AppColors.primarySoft,
-          backgroundColor: AppColors.panel,
-        ),
-      );
+  static const _statusKeys = ['all', 'present', 'late', 'absent', 'early_leave', 'missing'];
 
   Widget _row(AttendanceRecordModel r) {
     final name = _users[r.userId]?.fullName ?? 'User #${r.userId}';
@@ -180,17 +178,17 @@ class _AttendanceReportScreenState extends State<AttendanceReportScreen> {
         pill = StatusPill.neutral(r.status ?? '—');
     }
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: BloomCard(
+        padding: const EdgeInsets.all(14),
         child: Row(
           children: [
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name, style: const TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.w600, fontSize: 13)),
+                  Text(name, style: const TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.ink)),
                   const SizedBox(height: 2),
                   Text('${_day(r.attendanceDate)} · $inText · $outText', style: AppTextStyles.bodySoft),
                 ],
@@ -229,7 +227,7 @@ class _AttendanceReportScreenState extends State<AttendanceReportScreen> {
             onPressed: _isExporting ? null : _export,
             icon: _isExporting
                 ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.file_download_outlined, color: AppColors.primary),
+                : const Icon(Icons.file_download_outlined, color: AppColors.primaryDeep),
           ),
         ],
       ),
@@ -246,9 +244,16 @@ class _AttendanceReportScreenState extends State<AttendanceReportScreen> {
                           onPressed: _pickRange,
                           icon: const Icon(Icons.date_range_rounded, size: 18),
                           label: Text('${_day(_range.start)} – ${_day(_range.end)}'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.primaryDeep,
+                            backgroundColor: Colors.white,
+                            side: const BorderSide(color: AppColors.line),
+                            shape: const StadiumBorder(),
+                            minimumSize: const Size(0, 46),
+                          ),
                         ),
                       ),
-                      if (_groups.length > 1) ...[
+                      if (_isAdmin && _groups.length > 1) ...[
                         const SizedBox(width: 8),
                         DropdownButton<int?>(
                           value: _groupFilter,
@@ -264,18 +269,12 @@ class _AttendanceReportScreenState extends State<AttendanceReportScreen> {
                     ],
                   ),
                 ),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.fromLTRB(20, 8, 12, 0),
-                  child: Row(
-                    children: [
-                      _chip('all', 'All'),
-                      _chip('present', 'Present'),
-                      _chip('late', 'Late'),
-                      _chip('absent', 'Absent'),
-                      _chip('early_leave', 'Early leave'),
-                      _chip('missing', 'Missing check-out'),
-                    ],
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+                  child: AppFilterChips(
+                    labels: const ['All', 'Present', 'Late', 'Absent', 'Early leave', 'Missing check-out'],
+                    selected: _statusKeys.indexOf(_statusFilter),
+                    onSelected: (i) => setState(() => _statusFilter = _statusKeys[i]),
                   ),
                 ),
                 Padding(
@@ -296,8 +295,11 @@ class _AttendanceReportScreenState extends State<AttendanceReportScreen> {
                         ? ListView(
                             physics: const AlwaysScrollableScrollPhysics(),
                             children: [
-                              const SizedBox(height: 100),
-                              Center(child: Text('No records for this filter.', style: AppTextStyles.bodySoft)),
+                              const SizedBox(height: 80),
+                              const EmptyState(
+                                message: 'No records for this filter.',
+                                icon: Icons.assessment_outlined,
+                              ),
                             ],
                           )
                         : ListView.builder(

@@ -4,11 +4,24 @@ import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_text_styles.dart';
 import '../../../core/network/leave_api.dart';
 import '../../../core/network/correction_api.dart';
+import '../../../core/network/attendance_api.dart';
+import '../../../core/network/schedule_api.dart';
+import '../../../core/network/user_api.dart';
+import '../../../core/utils/date_formatter.dart';
+import '../../../data/models/attendance_record_model.dart';
+import '../../../data/models/schedule_model.dart';
+import '../../../data/models/user_model.dart';
 import '../../../data/models/leave_request_model.dart';
 import '../../../data/models/correction_request_model.dart';
 
 import 'package:provider/provider.dart';
 import '../../../core/controllers/auth_controller.dart';
+import '../../../widgets/app_avatar.dart';
+import '../../../widgets/bloom_card.dart';
+import '../../../widgets/empty_state.dart';
+import '../../../widgets/outline_button.dart';
+import '../../../widgets/primary_button.dart';
+import '../../../widgets/status_pill.dart';
 
 class ApprovalsScreen extends StatefulWidget {
   const ApprovalsScreen({super.key});
@@ -23,6 +36,14 @@ class _ApprovalsScreenState extends State<ApprovalsScreen>
   final List<LeaveRequestModel> _leaves = [];
   final List<CorrectionRequestModel> _corrections = [];
   bool _isLoading = true;
+
+  // Extra facts, so a card can show WHO and WHAT instead of only numbers.
+  Map<int, UserModel> _users = {};
+  Map<int, AttendanceRecordModel> _records = {};
+  Map<int, ScheduleModel> _schedules = {};
+
+  // Cards the user has tapped open. Keys look like 'c12' (correction) or 'l5' (leave).
+  final Set<String> _open = {};
 
   @override
   void initState() {
@@ -54,6 +75,9 @@ class _ApprovalsScreenState extends State<ApprovalsScreen>
         corrections = await CorrectionApi.getByGroup(groupId);
       }
 
+      await _loadExtras(user.role.name == 'admin', user.groupId);
+      if (!mounted) return;
+
       setState(() {
         _leaves
           ..clear()
@@ -66,6 +90,25 @@ class _ApprovalsScreenState extends State<ApprovalsScreen>
     } catch (e) {
       setState(() => _isLoading = false);
     }
+  }
+
+  /// Names, attendance records and shifts used to fill the cards.
+  /// Each part is optional: if one fails, the card still shows what it has.
+  Future<void> _loadExtras(bool isAdmin, int? groupId) async {
+    try {
+      final users = await UserApi.getAll();
+      _users = {for (final u in users) u.id: u};
+    } catch (_) {}
+    try {
+      final records = await AttendanceApi.getAll();
+      _records = {for (final r in records) r.id: r};
+    } catch (_) {}
+    try {
+      final List<ScheduleModel> schedules = isAdmin
+          ? await ScheduleApi.getAll()
+          : (groupId == null ? <ScheduleModel>[] : await ScheduleApi.getByGroup(groupId));
+      _schedules = {for (final sc in schedules) sc.id: sc};
+    } catch (_) {}
   }
 
   Future<void> _reviewLeave(int leaveId, String status) async {
@@ -105,12 +148,15 @@ class _ApprovalsScreenState extends State<ApprovalsScreen>
         ),
         bottom: TabBar(
           controller: _tabController,
-          labelColor: AppColors.primary,
+          labelColor: AppColors.primaryDeep,
           unselectedLabelColor: AppColors.inkSoft,
           indicatorColor: AppColors.primary,
-          tabs: const [
-            Tab(text: 'Leave'),
-            Tab(text: 'Corrections'),
+          indicatorWeight: 3,
+          labelStyle: const TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.w800, fontSize: 14),
+          unselectedLabelStyle: const TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.w600, fontSize: 14),
+          tabs: [
+            Tab(text: 'Leave (${_leaves.length})'),
+            Tab(text: 'Corrections (${_corrections.length})'),
           ],
         ),
       ),
@@ -122,11 +168,9 @@ class _ApprovalsScreenState extends State<ApprovalsScreen>
               controller: _tabController,
               children: [
                 _leaves.isEmpty
-                    ? Center(
-                        child: Text(
-                          'No pending leave requests.',
-                          style: AppTextStyles.bodySoft,
-                        ),
+                    ? const EmptyState(
+                        message: 'No pending leave requests.',
+                        icon: Icons.task_alt_rounded,
                       )
                     : ListView.builder(
                         padding: const EdgeInsets.all(20),
@@ -134,11 +178,9 @@ class _ApprovalsScreenState extends State<ApprovalsScreen>
                         itemBuilder: (context, i) => _leaveTile(_leaves[i]),
                       ),
                 _corrections.isEmpty
-                    ? Center(
-                        child: Text(
-                          'No pending correction requests.',
-                          style: AppTextStyles.bodySoft,
-                        ),
+                    ? const EmptyState(
+                        message: 'No pending correction requests.',
+                        icon: Icons.task_alt_rounded,
                       )
                     : ListView.builder(
                         padding: const EdgeInsets.all(20),
@@ -151,50 +193,135 @@ class _ApprovalsScreenState extends State<ApprovalsScreen>
     );
   }
 
+  // Reject (red outline) and Approve (green) side by side, used by both tiles.
+  Widget _decisionButtons({
+    required VoidCallback onReject,
+    required VoidCallback onApprove,
+  }) {
+    return Row(
+      children: [
+        Expanded(
+          child: AppOutlineButton(label: 'Reject', danger: true, onPressed: onReject),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: PrimaryButton(label: 'Approve', onPressed: onApprove),
+        ),
+      ],
+    );
+  }
+
+  String _clock(DateTime? t) => t == null ? '—' : DateFormatter.time(t.toLocal());
+
+  // One line of the detail list: label on the left, value on the right.
+  Widget _detail(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(width: 118, child: Text(label, style: AppTextStyles.bodySoft)),
+          Expanded(
+            child: Text(
+              value,
+              style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  StatusPill _recordPill(String? status) {
+    switch (status) {
+      case 'present':
+        return StatusPill.present('Present');
+      case 'late':
+        return StatusPill.late('Late');
+      case 'absent':
+        return StatusPill.absent('Absent');
+      default:
+        return StatusPill.neutral(status ?? '—');
+    }
+  }
+
+  // Name + small line + arrow. Tapping it opens or closes the details.
+  Widget _cardHeader({
+    required String name,
+    required String subtitle,
+    required bool isOpen,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: Row(
+        children: [
+          AppAvatar(name: name, size: 44),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontFamily: 'Sora',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    color: AppColors.ink,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(subtitle, style: AppTextStyles.bodySoft),
+              ],
+            ),
+          ),
+          Icon(
+            isOpen ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+            color: AppColors.inkSoft,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _leaveTile(LeaveRequestModel leave) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
+    final key = 'l${leave.id}';
+    final isOpen = _open.contains(key);
+    final name = _users[leave.userId]?.fullName ?? 'Employee #${leave.userId}';
+    final days = leave.dateTo.difference(leave.dateFrom).inDays + 1;
+    final range =
+        '${DateFormatter.date(leave.dateFrom)} – ${DateFormatter.date(leave.dateTo)}';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: BloomCard(
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '${leave.dateFrom.day}/${leave.dateFrom.month} – ${leave.dateTo.day}/${leave.dateTo.month}',
-              style: const TextStyle(
-                fontFamily: 'Sora',
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
+            _cardHeader(
+              name: name,
+              subtitle: 'Leave · $range',
+              isOpen: isOpen,
+              onTap: () => setState(() => isOpen ? _open.remove(key) : _open.add(key)),
             ),
-            const SizedBox(height: 4),
-            Text(leave.reason ?? '', style: AppTextStyles.bodySoft),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => _reviewLeave(leave.id, 'rejected'),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: AppColors.absent),
-                    ),
-                    child: const Text(
-                      'Reject',
-                      style: TextStyle(color: AppColors.absent),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => _reviewLeave(leave.id, 'approved'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.present,
-                    ),
-                    child: const Text('Approve'),
-                  ),
-                ),
-              ],
+            if (isOpen) ...[
+              const SizedBox(height: 10),
+              const Divider(height: 1, color: AppColors.line),
+              const SizedBox(height: 6),
+              _detail('Employee', name),
+              if (_users[leave.userId] != null) _detail('Email', _users[leave.userId]!.email),
+              _detail('From', DateFormatter.date(leave.dateFrom)),
+              _detail('To', DateFormatter.date(leave.dateTo)),
+              _detail('Days', '$days'),
+              _detail('Reason', (leave.reason ?? '').isEmpty ? '—' : leave.reason!),
+            ],
+            const SizedBox(height: 14),
+            _decisionButtons(
+              onReject: () => _reviewLeave(leave.id, 'rejected'),
+              onApprove: () => _reviewLeave(leave.id, 'approved'),
             ),
           ],
         ),
@@ -203,58 +330,73 @@ class _ApprovalsScreenState extends State<ApprovalsScreen>
   }
 
   Widget _correctionTile(CorrectionRequestModel correction) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
+    final key = 'c${correction.id}';
+    final isOpen = _open.contains(key);
+    final record = _records[correction.attendanceRecordId];
+    final person = record == null ? null : _users[record.userId];
+    final name = person?.fullName ??
+        (record == null ? 'Record #${correction.attendanceRecordId}' : 'Employee #${record.userId}');
+    final shift = record == null ? null : _schedules[record.scheduleId];
+    final dateText = record == null ? '' : DateFormatter.date(record.attendanceDate);
+    final asks = correction.requestedCheckOutTime != null
+        ? 'Real check-out ${_clock(correction.requestedCheckOutTime)}'
+        : (correction.requestedStatus != null
+            ? 'Change status to ${correction.requestedStatus}'
+            : 'Correction request');
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: BloomCard(
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Record #${correction.attendanceRecordId}',
-              style: const TextStyle(
-                fontFamily: 'Sora',
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
+            _cardHeader(
+              name: name,
+              subtitle: dateText.isEmpty ? asks : '$dateText · $asks',
+              isOpen: isOpen,
+              onTap: () => setState(() => isOpen ? _open.remove(key) : _open.add(key)),
             ),
-            const SizedBox(height: 4),
-            Text(correction.reason, style: AppTextStyles.bodySoft),
-            if (correction.requestedCheckOutTime != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                'Real check-out time: ${correction.requestedCheckOutTime!.toLocal().hour.toString().padLeft(2, '0')}:${correction.requestedCheckOutTime!.toLocal().minute.toString().padLeft(2, '0')}',
-                style: const TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.w600, fontSize: 12),
-              ),
-            ],
             const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () =>
-                        _reviewCorrection(correction.id, 'rejected'),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: AppColors.absent),
-                    ),
-                    child: const Text(
-                      'Reject',
-                      style: TextStyle(color: AppColors.absent),
-                    ),
+            Text(correction.reason,
+                maxLines: isOpen ? null : 2,
+                overflow: isOpen ? TextOverflow.visible : TextOverflow.ellipsis,
+                style: AppTextStyles.bodySoft),
+            if (isOpen) ...[
+              const SizedBox(height: 10),
+              const Divider(height: 1, color: AppColors.line),
+              const SizedBox(height: 6),
+              _detail('Employee', name),
+              if (person != null) _detail('Email', person.email),
+              if (dateText.isNotEmpty) _detail('Date', dateText),
+              if (shift != null)
+                _detail('Shift',
+                    '${shift.sessionName} · ${shift.startTime.substring(0, 5)} – ${shift.endTime.substring(0, 5)}'),
+              if (record != null) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 5),
+                  child: Row(
+                    children: [
+                      SizedBox(width: 118, child: Text('Now recorded', style: AppTextStyles.bodySoft)),
+                      _recordPill(record.status),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () =>
-                        _reviewCorrection(correction.id, 'approved'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.present,
-                    ),
-                    child: const Text('Approve'),
-                  ),
-                ),
+                _detail('Check-in', _clock(record.checkInTime)),
+                _detail('Check-out',
+                    record.missingCheckout ? 'Missing' : _clock(record.checkOutTime)),
               ],
+              if (correction.requestedCheckInTime != null)
+                _detail('Asks check-in', _clock(correction.requestedCheckInTime)),
+              if (correction.requestedCheckOutTime != null)
+                _detail('Asks check-out', _clock(correction.requestedCheckOutTime)),
+              if (correction.requestedStatus != null)
+                _detail('Asks status', correction.requestedStatus!),
+            ],
+            const SizedBox(height: 14),
+            _decisionButtons(
+              onReject: () => _reviewCorrection(correction.id, 'rejected'),
+              onApprove: () => _reviewCorrection(correction.id, 'approved'),
             ),
           ],
         ),

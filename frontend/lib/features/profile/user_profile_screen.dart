@@ -10,6 +10,12 @@ import '../../core/network/face_profile_api.dart';
 import '../../core/network/group_api.dart';
 import '../../core/network/user_api.dart';
 import '../../data/models/group_model.dart';
+import '../../widgets/app_avatar.dart';
+import '../../widgets/app_text_field.dart';
+import '../../widgets/bloom_card.dart';
+import '../../widgets/outline_button.dart';
+import '../../widgets/primary_button.dart';
+import '../../widgets/status_pill.dart';
 
 class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({super.key});
@@ -133,7 +139,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.panel,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
       builder: (sheetContext) => StatefulBuilder(
         builder: (sheetContext, setSheetState) => Padding(
           padding: EdgeInsets.only(
@@ -149,31 +155,31 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               children: [
                 Text('Change password', style: AppTextStyles.heading),
                 const SizedBox(height: 16),
-                TextField(
+                AppTextField(
+                  label: 'Current password',
                   controller: oldController,
-                  obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Current password'),
+                  obscure: true,
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                AppTextField(
+                  label: 'New password (at least 8 characters)',
                   controller: newController,
-                  obscureText: true,
-                  decoration: const InputDecoration(labelText: 'New password (at least 8 characters)'),
+                  obscure: true,
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                AppTextField(
+                  label: 'Confirm new password',
                   controller: confirmController,
-                  obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Confirm new password'),
+                  obscure: true,
                 ),
                 if (error != null) ...[
                   const SizedBox(height: 10),
                   Text(error!, style: const TextStyle(color: AppColors.absent, fontSize: 12.5)),
                 ],
                 const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
+                PrimaryButton(
+                    label: 'Update password',
+                    isLoading: isSaving,
                     onPressed: isSaving
                         ? null
                         : () async {
@@ -213,15 +219,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                               });
                             }
                           },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    child: isSaving
-                        ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Text('Update password'),
-                  ),
                 ),
               ],
             ),
@@ -255,40 +252,31 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             const SizedBox(height: 18),
 
             // ---- Header ----
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 32,
-                  backgroundColor: AppColors.primary,
-                  child: Text(
-                    _name.isNotEmpty ? _name[0].toUpperCase() : '?',
-                    style: const TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.w700, color: Colors.white, fontSize: 24),
+            BloomCard(
+              padding: const EdgeInsets.all(18),
+              child: Row(
+                children: [
+                  AppAvatar(name: _name, size: 64, filled: true),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(_name, style: AppTextStyles.heading),
+                        const SizedBox(height: 2),
+                        Text('$role · $team', style: AppTextStyles.bodySoft),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(_name, style: AppTextStyles.heading),
-                      const SizedBox(height: 2),
-                      Text('$role · $team', style: AppTextStyles.bodySoft),
-                    ],
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
             // ---- Details or edit form ----
             if (!_isEditing)
-              Container(
+              BloomCard(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.panel,
-                  border: Border.all(color: AppColors.line),
-                  borderRadius: BorderRadius.circular(18),
-                ),
                 child: Column(
                   children: [
                     _row('Full name', _name),
@@ -308,23 +296,18 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 ),
               )
             else
-              Container(
+              BloomCard(
                 padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.panel,
-                  border: Border.all(color: AppColors.line),
-                  borderRadius: BorderRadius.circular(18),
-                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Full name', style: AppTextStyles.label),
-                    const SizedBox(height: 6),
-                    TextField(controller: _nameController, decoration: _inputDecoration()),
+                    AppTextField(label: 'Full name', controller: _nameController),
                     const SizedBox(height: 14),
-                    Text('Phone', style: AppTextStyles.label),
-                    const SizedBox(height: 6),
-                    TextField(controller: _phoneController, keyboardType: TextInputType.phone, decoration: _inputDecoration()),
+                    AppTextField(
+                      label: 'Phone',
+                      controller: _phoneController,
+                      keyboardType: TextInputType.phone,
+                    ),
                     const SizedBox(height: 10),
                     Text('Email and team are managed by your admin.', style: AppTextStyles.bodySoft),
                   ],
@@ -337,59 +320,52 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
+                    child: AppOutlineButton(
+                      label: 'Cancel',
                       onPressed: _isSaving ? null : () => setState(() => _isEditing = false),
-                      style: _outlineStyle(),
-                      child: const Text('Cancel'),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: ElevatedButton(
+                    child: PrimaryButton(
+                      label: 'Save',
+                      isLoading: _isSaving,
                       onPressed: _isSaving ? null : _save,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size(0, 50),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                      child: _isSaving
-                          ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Text('Save'),
                     ),
                   ),
                 ],
               )
             else ...[
-              OutlinedButton(onPressed: _startEditing, style: _outlineStyle(), child: const Text('Edit profile')),
+              AppOutlineButton(label: 'Edit profile', icon: Icons.edit_outlined, onPressed: _startEditing),
               const SizedBox(height: 10),
-              OutlinedButton(onPressed: _openChangePassword, style: _outlineStyle(), child: const Text('Change password')),
+              AppOutlineButton(label: 'Change password', icon: Icons.lock_outline_rounded, onPressed: _openChangePassword),
               if (_usesAttendance) ...[
                 const SizedBox(height: 10),
                 // Not registered yet: "Register my face". Already registered: "Re-register my face".
                 if (_faceChecked)
-                  OutlinedButton(
+                  AppOutlineButton(
+                    label: _faceRegistered ? 'Re-register my face' : 'Register my face',
+                    icon: Icons.face_retouching_natural_rounded,
                     onPressed: _openFaceRegistration,
-                    style: _outlineStyle(),
-                    child: Text(_faceRegistered ? 'Re-register my face' : 'Register my face'),
                   ),
                 const SizedBox(height: 10),
-                OutlinedButton(
+                AppOutlineButton(
+                  label: 'Attendance history',
+                  icon: Icons.history_rounded,
                   onPressed: () => Navigator.pushNamed(context, AppRoutes.attendanceHistory),
-                  style: _outlineStyle(plain: true),
-                  child: const Text('Attendance history'),
                 ),
               ],
               const SizedBox(height: 10),
-              TextButton(
-                style: TextButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
+              AppOutlineButton(
+                label: 'Log out',
+                icon: Icons.logout_rounded,
+                danger: true,
                 onPressed: () async {
                   await auth.logout();
                   if (context.mounted) {
                     Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false);
                   }
                 },
-                child: const Text('Log out', style: TextStyle(color: AppColors.absent, fontWeight: FontWeight.w600)),
               ),
             ],
           ],
@@ -412,7 +388,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             child: Text(value,
                 textAlign: TextAlign.right,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.w600, fontSize: 13.5)),
+                style: const TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.ink)),
           ),
         ],
       ),
@@ -427,7 +403,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text('Password', style: AppTextStyles.bodySoft),
-          const Text('••••••••', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, letterSpacing: 2)),
+          const Text('••••••••', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, letterSpacing: 2, color: AppColors.ink)),
         ],
       ),
     );
@@ -443,31 +419,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text('Face', style: AppTextStyles.bodySoft),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
-            decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(100)),
-            child: Text(text, style: TextStyle(color: fg, fontWeight: FontWeight.w600, fontSize: 12)),
-          ),
+          StatusPill(text: text, color: fg, background: bg),
         ],
       ),
     );
   }
 
   Widget _divider() => const Divider(height: 1, thickness: 1, color: AppColors.line);
-
-  ButtonStyle _outlineStyle({bool plain = false}) => OutlinedButton.styleFrom(
-        minimumSize: const Size(double.infinity, 50),
-        foregroundColor: plain ? AppColors.ink : AppColors.primary,
-        backgroundColor: plain ? AppColors.panel : null,
-        side: BorderSide(color: plain ? AppColors.line : AppColors.primary, width: plain ? 1 : 1.5),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        textStyle: const TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.w600, fontSize: 14),
-      );
-
-  InputDecoration _inputDecoration() => InputDecoration(
-        filled: true,
-        fillColor: AppColors.background,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: AppColors.line)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: AppColors.line)),
-      );
 }

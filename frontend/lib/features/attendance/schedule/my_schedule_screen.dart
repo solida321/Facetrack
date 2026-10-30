@@ -10,6 +10,12 @@ import '../../../core/network/attendance_api.dart';
 import '../../../data/models/schedule_model.dart';
 import '../../../data/models/attendance_record_model.dart';
 import '../../../widgets/bloom_card.dart';
+import '../../../widgets/status_icon.dart';
+import '../../../widgets/shift_action_card.dart';
+import '../../../core/utils/date_formatter.dart';
+import '../../face/scan/face_scan_screen.dart';
+import '../check/check_out_screen.dart';
+import '../../../widgets/empty_state.dart';
 import '../../../widgets/status_pill.dart';
 
 class MyScheduleScreen extends StatefulWidget {
@@ -21,6 +27,7 @@ class MyScheduleScreen extends StatefulWidget {
 
 class _MyScheduleScreenState extends State<MyScheduleScreen> {
   List<ScheduleModel> _schedules = [];
+  List<ScheduleModel> _todayShifts = []; // today's shifts, weekly or one-day
   List<AttendanceRecordModel> _records = [];
   bool _isLoading = true;
   String? _error;
@@ -53,6 +60,7 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
       final records = await AttendanceApi.getMyHistory(user.id);
       setState(() {
         _schedules = schedules.where((s) => s.dayOfWeek != null).toList();
+        _todayShifts = schedules.where(_isToday).toList();
         _records = records;
         _isLoading = false;
       });
@@ -62,6 +70,26 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  bool _isToday(ScheduleModel s) {
+    final now = DateTime.now();
+    if (s.dayOfWeek != null) return s.dayOfWeek == now.weekday - 1;
+    if (s.specificDate != null) return _sameDay(s.specificDate!, now);
+    return false;
+  }
+
+  Future<void> _checkIn(ScheduleModel s) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => FaceScanScreen(scheduleId: s.id)),
+    );
+    if (mounted) _load();
+  }
+
+  Future<void> _checkOut(AttendanceRecordModel record) async {
+    await confirmAndCheckOut(context, record);
+    if (mounted) _load();
   }
 
   bool _sameDay(DateTime a, DateTime b) =>
@@ -95,15 +123,9 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
                 child: CircularProgressIndicator(color: AppColors.primary),
               )
             : _error != null
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Text(
-                        _error!,
-                        style: AppTextStyles.bodySoft,
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
+                ? EmptyState(
+                    message: _error!,
+                    icon: Icons.group_off_outlined,
                   )
                 : _buildBody(),
       ),
@@ -121,11 +143,43 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        Text('Your schedule.', style: AppTextStyles.headline),
+        Text('Your shifts.', style: AppTextStyles.headline),
         const SizedBox(height: 4),
-        Text('Your assigned shifts, in one place',
+        Text("Check in for today, and see your schedule below",
             style: AppTextStyles.bodySoft),
-        const SizedBox(height: 16),
+        const SizedBox(height: 18),
+
+        // ---- Today ----
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text("Today's shifts", style: AppTextStyles.subheading),
+            Text(
+              '${_todayShifts.length} shift${_todayShifts.length == 1 ? '' : 's'}',
+              style: AppTextStyles.bodySoft,
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        if (_todayShifts.isEmpty)
+          const EmptyState(
+            message: 'No shifts scheduled today.',
+            icon: Icons.event_available_outlined,
+          )
+        else
+          ..._todayShifts.map(
+            (s) => ShiftActionCard(
+              schedule: s,
+              record: _recordFor(s.id, DateTime.now()),
+              onCheckIn: () => _checkIn(s),
+              onCheckOut: _checkOut,
+            ),
+          ),
+        const SizedBox(height: 14),
+
+        // ---- Calendar ----
+        Text('My schedule', style: AppTextStyles.subheading),
+        const SizedBox(height: 10),
 
         // ---- Week / Month toggle ----
         Container(
@@ -249,15 +303,9 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
         const SizedBox(height: 14),
 
         if (selectedShifts.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20),
-            child: Center(
-              child: Icon(
-                Icons.beach_access_rounded,
-                size: 32,
-                color: AppColors.line,
-              ),
-            ),
+          const EmptyState(
+            message: 'Enjoy your day off.',
+            icon: Icons.beach_access_rounded,
           )
         else
           ...selectedShifts.map((s) {
@@ -266,51 +314,66 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
             final isPastDay =
                 DateTime(_selectedDay.year, _selectedDay.month, _selectedDay.day)
                     .isBefore(DateTime(now.year, now.month, now.day));
-            final pill = record == null
-                ? (isPastDay
-                    ? StatusPill.neutral('No record')
-                    : StatusPill.neutral('Upcoming'))
-                : record.status == 'absent'
-                    ? StatusPill.absent('Absent')
-                    : (record.status == 'late'
-                        ? StatusPill.late('Checked in')
-                        : StatusPill.present('Checked in'));
+            // The round icon at the start of the card shows the status.
+            final String? shiftStatus = record == null
+                ? null
+                : (record.status == 'absent'
+                    ? 'absent'
+                    : (record.status == 'late' ? 'late' : 'present'));
+            final statusText = record == null
+                ? (isPastDay ? 'No record' : 'Upcoming')
+                : (record.status == 'absent' ? 'Absent' : null);
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: BloomCard(
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
+                    StatusIcon(status: shiftStatus),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           s.sessionName,
                           style: const TextStyle(
                             fontFamily: 'Sora',
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                            color: AppColors.ink,
                           ),
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '${s.startTime.substring(0, 5)} – ${s.endTime.substring(0, 5)}',
+                          DateFormatter.shiftRange(s.startTime, s.endTime),
                           style: AppTextStyles.bodySoft,
                         ),
+                        if (statusText != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            statusText,
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              color: record?.status == 'absent' ? AppColors.absent : AppColors.inkSoft,
+                            ),
+                          ),
+                        ],
                         if (record?.checkInTime != null) ...[
                           const SizedBox(height: 2),
                           Text(
-                            'Checked in at ${record!.checkInTime!.hour.toString().padLeft(2, '0')}:${record.checkInTime!.minute.toString().padLeft(2, '0')}',
+                            'Checked in at ${DateFormatter.time(record!.checkInTime!)}',
                             style: const TextStyle(
-                              fontSize: 10.5,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
                               color: AppColors.present,
                             ),
                           ),
                         ],
                       ],
                     ),
-                    pill,
+                    ),
                   ],
                 ),
               ),

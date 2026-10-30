@@ -9,6 +9,12 @@ import '../../../core/network/user_api.dart';
 import '../../../data/models/group_model.dart';
 import '../../../data/models/role_model.dart';
 import '../../../data/models/user_model.dart';
+import '../../../widgets/app_avatar.dart';
+import '../../../widgets/app_text_field.dart';
+import '../../../widgets/bloom_card.dart';
+import '../../../widgets/empty_state.dart';
+import '../../../widgets/primary_button.dart';
+import '../../../widgets/status_pill.dart';
 
 class TeamMembersScreen extends StatefulWidget {
   final GroupModel group;
@@ -121,7 +127,7 @@ class _TeamMembersScreenState extends State<TeamMembersScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.panel,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
       builder: (sheetContext) => StatefulBuilder(
         builder: (sheetContext, setSheetState) => Padding(
           padding: EdgeInsets.only(
@@ -137,18 +143,18 @@ class _TeamMembersScreenState extends State<TeamMembersScreen> {
               children: [
                 Text('Add to ${widget.group.name}', style: AppTextStyles.heading),
                 const SizedBox(height: 16),
-                TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Full name')),
+                AppTextField(label: 'Full name', controller: nameController),
                 const SizedBox(height: 12),
-                TextField(
+                AppTextField(
+                  label: 'Email',
                   controller: emailController,
                   keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(labelText: 'Email'),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                AppTextField(
+                  label: 'Password (at least 8 characters)',
                   controller: passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Password (at least 8 characters)'),
+                  obscure: true,
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int>(
@@ -164,9 +170,9 @@ class _TeamMembersScreenState extends State<TeamMembersScreen> {
                   Text(error!, style: const TextStyle(color: AppColors.absent, fontSize: 12.5)),
                 ],
                 const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
+                PrimaryButton(
+                    label: 'Create',
+                    isLoading: isSaving,
                     onPressed: isSaving
                         ? null
                         : () async {
@@ -208,14 +214,6 @@ class _TeamMembersScreenState extends State<TeamMembersScreen> {
                               });
                             }
                           },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    child: isSaving
-                        ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Text('Create'),
-                  ),
                 ),
               ],
             ),
@@ -242,10 +240,17 @@ class _TeamMembersScreenState extends State<TeamMembersScreen> {
           ],
         ),
         actions: [
-          IconButton(
-            tooltip: 'Add user to this team',
-            icon: const Icon(Icons.person_add_alt_1_rounded, color: AppColors.primary),
-            onPressed: _openCreateForm,
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Material(
+              color: AppColors.primary,
+              shape: const CircleBorder(),
+              child: IconButton(
+                tooltip: 'Add user to this team',
+                icon: const Icon(Icons.person_add_alt_1_rounded, color: Colors.white),
+                onPressed: _openCreateForm,
+              ),
+            ),
           ),
         ],
       ),
@@ -258,12 +263,14 @@ class _TeamMembersScreenState extends State<TeamMembersScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('No one is in this team yet.', style: AppTextStyles.bodySoft),
+                        const EmptyState(
+                          message: 'No one is in this team yet.',
+                          icon: Icons.groups_2_outlined,
+                        ),
                         const SizedBox(height: 14),
-                        ElevatedButton(
+                        PrimaryButton(
+                          label: 'Add the first person',
                           onPressed: _openCreateForm,
-                          style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
-                          child: const Text('Add the first person'),
                         ),
                       ],
                     ),
@@ -282,45 +289,41 @@ class _TeamMembersScreenState extends State<TeamMembersScreen> {
   }
 
   Widget _memberCard(UserModel u) {
-    final active = u.status == 'active';
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: BloomCard(
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 6),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: AppColors.primarySoft,
-                  child: Text(
-                    u.fullName.isNotEmpty ? u.fullName[0].toUpperCase() : '?',
-                    style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 12),
-                  ),
-                ),
-                const SizedBox(width: 10),
+                AppAvatar(name: u.fullName, size: 44, muted: u.status == 'inactive'),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(u.fullName, style: const TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.w600, fontSize: 12.5)),
+                      Text(
+                        u.fullName,
+                        style: const TextStyle(
+                          fontFamily: 'Sora',
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          color: AppColors.ink,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
                       Text('${u.role.name} · ${u.email}', style: AppTextStyles.bodySoft, overflow: TextOverflow.ellipsis),
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: active ? AppColors.presentBg : AppColors.lateBg,
-                    borderRadius: BorderRadius.circular(100),
-                  ),
-                  child: Text(
-                    u.status,
-                    style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: active ? AppColors.present : AppColors.late),
-                  ),
-                ),
+                const SizedBox(width: 8),
+                u.status == 'active'
+                    ? StatusPill.present('Active')
+                    : u.status == 'inactive'
+                        ? StatusPill.neutral('Inactive')
+                        : StatusPill.late('Pending'),
               ],
             ),
             const SizedBox(height: 4),

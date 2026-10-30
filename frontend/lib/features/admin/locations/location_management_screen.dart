@@ -6,6 +6,10 @@ import '../../../core/network/api_error.dart';
 import '../../../core/network/location_api.dart';
 import '../../../core/services/location_service.dart';
 import '../../../data/models/location_model.dart';
+import '../../../widgets/app_text_field.dart';
+import '../../../widgets/bloom_card.dart';
+import '../../../widgets/empty_state.dart';
+import '../../../widgets/primary_button.dart';
 
 /// Where a shift happens. A location is a point on the map plus a radius:
 /// employees can only check in while their phone is inside that circle.
@@ -51,7 +55,7 @@ class _LocationManagementScreenState extends State<LocationManagementScreen> {
       isScrollControlled: true,
       backgroundColor: AppColors.panel,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (_) => _LocationFormSheet(existing: existing, onSaved: _load),
     );
@@ -108,10 +112,17 @@ class _LocationManagementScreenState extends State<LocationManagementScreen> {
           ],
         ),
         actions: [
-          IconButton(
-            tooltip: 'Add location',
-            icon: const Icon(Icons.add_rounded, color: AppColors.primary),
-            onPressed: () => _openForm(),
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Material(
+              color: AppColors.primary,
+              shape: const CircleBorder(),
+              child: IconButton(
+                tooltip: 'Add location',
+                icon: const Icon(Icons.add_rounded, color: Colors.white),
+                onPressed: () => _openForm(),
+              ),
+            ),
           ),
         ],
       ),
@@ -121,33 +132,57 @@ class _LocationManagementScreenState extends State<LocationManagementScreen> {
               color: AppColors.primary,
               onRefresh: _load,
               child: _loadError != null
-                  ? _message(_loadError!)
+                  ? _message(_loadError!, Icons.error_outline_rounded)
                   : _locations.isEmpty
-                      ? _message('No locations yet. Tap + to add your first one.')
+                      ? _message('No locations yet. Tap + to add your first one.', Icons.place_outlined)
                       : ListView.builder(
                           physics: const AlwaysScrollableScrollPhysics(),
                           padding: const EdgeInsets.all(20),
                           itemCount: _locations.length,
                           itemBuilder: (context, i) {
                             final l = _locations[i];
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 10),
-                              child: ListTile(
-                                leading: const Icon(Icons.place_outlined, color: AppColors.primary),
-                                title: Text(
-                                  l.name,
-                                  style: const TextStyle(
-                                    fontFamily: 'Sora',
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                subtitle: Text(
-                                  '${l.latitude.toStringAsFixed(5)}, ${l.longitude.toStringAsFixed(5)} · ${l.allowedRadiusMeters} m radius',
-                                ),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: BloomCard(
+                                padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
+                                child: Row(
                                   children: [
+                                    Container(
+                                      width: 44,
+                                      height: 44,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primarySoft,
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                      child: const Icon(Icons.place_rounded,
+                                          color: AppColors.primaryDeep, size: 22),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            l.name,
+                                            style: const TextStyle(
+                                              fontFamily: 'Sora',
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 15,
+                                              color: AppColors.ink,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            '${l.latitude.toStringAsFixed(5)}, ${l.longitude.toStringAsFixed(5)}',
+                                            style: AppTextStyles.bodySoft,
+                                          ),
+                                          Text(
+                                            '${l.allowedRadiusMeters} m radius',
+                                            style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                     IconButton(
                                       icon: const Icon(Icons.edit_outlined, size: 20),
                                       onPressed: () => _openForm(existing: l),
@@ -166,17 +201,12 @@ class _LocationManagementScreenState extends State<LocationManagementScreen> {
     );
   }
 
-  Widget _message(String text) {
+  Widget _message(String text, IconData icon) {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
-        const SizedBox(height: 120),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Center(
-            child: Text(text, style: AppTextStyles.bodySoft, textAlign: TextAlign.center),
-          ),
-        ),
+        const SizedBox(height: 100),
+        EmptyState(message: text, icon: icon),
       ],
     );
   }
@@ -319,27 +349,26 @@ class _LocationFormSheetState extends State<_LocationFormSheet> {
               style: AppTextStyles.heading,
             ),
             const SizedBox(height: 16),
-            TextField(
+            AppTextField(
+              label: 'Name (e.g. Head Office)',
               controller: _nameController,
-              textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(labelText: 'Name (e.g. Head Office)'),
             ),
             const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
-                  child: TextField(
+                  child: AppTextField(
+                    label: 'Latitude',
                     controller: _latController,
                     keyboardType: numberKeyboard,
-                    decoration: const InputDecoration(labelText: 'Latitude'),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: TextField(
+                  child: AppTextField(
+                    label: 'Longitude',
                     controller: _lngController,
                     keyboardType: numberKeyboard,
-                    decoration: const InputDecoration(labelText: 'Longitude'),
                   ),
                 ),
               ],
@@ -360,31 +389,25 @@ class _LocationFormSheetState extends State<_LocationFormSheet> {
               ),
             ),
             const SizedBox(height: 4),
-            TextField(
+            AppTextField(
+              label: 'Allowed radius (meters)',
               controller: _radiusController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Allowed radius (meters)',
-                helperText: 'Employees must be within this distance to check in.',
-              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Employees must be within this distance to check in.',
+              style: AppTextStyles.bodySoft,
             ),
             if (_error != null) ...[
               const SizedBox(height: 12),
               Text(_error!, style: const TextStyle(color: AppColors.absent, fontSize: 12)),
             ],
             const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isSaving ? null : _save,
-                child: _isSaving
-                    ? const SizedBox(
-                        height: 18,
-                        width: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Text('Save'),
-              ),
+            PrimaryButton(
+              label: 'Save',
+              isLoading: _isSaving,
+              onPressed: _isSaving ? null : _save,
             ),
           ],
         ),

@@ -8,11 +8,19 @@ import '../../../core/network/attendance_api.dart';
 import '../../../core/network/schedule_api.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/attendance_record_model.dart';
-import '../../../widgets/status_pill.dart';
+import '../../../widgets/status_icon.dart';
 import 'attendance_detail_screen.dart';
+import '../../../widgets/bloom_card.dart';
+import '../../../widgets/empty_state.dart';
+import '../../../widgets/filter_chips.dart';
 
 class AttendanceHistoryScreen extends StatefulWidget {
-  const AttendanceHistoryScreen({super.key});
+  /// Optional: open the list already filtered ('present', 'late' or 'absent'),
+  /// and/or already limited to a date range (for example this month).
+  final String initialStatus;
+  final DateTimeRange? initialRange;
+
+  const AttendanceHistoryScreen({super.key, this.initialStatus = 'all', this.initialRange});
 
   @override
   State<AttendanceHistoryScreen> createState() => _AttendanceHistoryScreenState();
@@ -37,6 +45,8 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
   @override
   void initState() {
     super.initState();
+    _statusFilter = widget.initialStatus;
+    _range = widget.initialRange;
     _load();
   }
 
@@ -142,50 +152,34 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
 
   int _count(String status) => _records.where((r) => r.status == status).length;
 
-  StatusPill _pill(String? status) {
+  String _statusWord(String? status) {
     switch (status) {
       case 'present':
-        return StatusPill.present('Present');
+        return 'Present';
       case 'late':
-        return StatusPill.late('Late');
+        return 'Late';
       case 'absent':
-        return StatusPill.absent('Absent');
+        return 'Absent';
       default:
-        return StatusPill.neutral(status ?? '—');
+        return status ?? '—';
     }
   }
 
   String _subtitle(AttendanceRecordModel r) {
     final checkIn = r.checkInTime;
     final checkOut = r.checkOutTime;
-    if (checkIn == null) return 'No check-in';
+    final word = _statusWord(r.status);
+    if (checkIn == null) return '$word · No check-in';
     final inText = 'In ${DateFormatter.time(checkIn)}';
     final outText = r.missingCheckout
         ? 'missing check-out'
         : checkOut == null
             ? 'not checked out'
             : 'Out ${DateFormatter.time(checkOut)}${r.leftEarly ? ' (left early)' : ''}';
-    return '$inText · $outText';
+    return '$word · $inText · $outText';
   }
 
-  Widget _statusChip(String value, String label) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: ChoiceChip(
-        label: Text(label),
-        selected: _statusFilter == value,
-        onSelected: (_) => setState(() => _statusFilter = value),
-        selectedColor: AppColors.primarySoft,
-        backgroundColor: AppColors.panel,
-        side: const BorderSide(color: AppColors.line),
-        labelStyle: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: _statusFilter == value ? AppColors.primary : AppColors.inkSoft,
-        ),
-      ),
-    );
-  }
+  static const _statusKeys = ['all', 'present', 'late', 'absent'];
 
   Widget _filters() {
     final range = _range;
@@ -209,29 +203,29 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                     ),
             ),
           ),
-          const SizedBox(height: 10),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _statusChip('all', 'All ${_records.length}'),
-                _statusChip('present', 'Present ${_count('present')}'),
-                _statusChip('late', 'Late ${_count('late')}'),
-                _statusChip('absent', 'Absent ${_count('absent')}'),
-              ],
-            ),
+          const SizedBox(height: 12),
+          AppFilterChips(
+            labels: [
+              'All ${_records.length}',
+              'Present ${_count('present')}',
+              'Late ${_count('late')}',
+              'Absent ${_count('absent')}',
+            ],
+            selected: _statusKeys.indexOf(_statusFilter),
+            onSelected: (i) => setState(() => _statusFilter = _statusKeys[i]),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           Row(
             children: [
               InputChip(
-                avatar: const Icon(Icons.date_range_rounded, size: 16, color: AppColors.primary),
+                avatar: const Icon(Icons.date_range_rounded, size: 16, color: AppColors.primaryDeep),
                 label: Text(range == null ? 'Any date' : _rangeLabel(range)),
                 onPressed: _pickRange,
                 onDeleted: range == null ? null : () => setState(() => _range = null),
-                backgroundColor: range == null ? AppColors.panel : AppColors.primarySoft,
+                backgroundColor: range == null ? Colors.white : AppColors.primarySoft,
                 side: const BorderSide(color: AppColors.line),
-                labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                shape: const StadiumBorder(),
+                labelStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.ink),
               ),
               const Spacer(),
               if (_hasActiveFilter)
@@ -252,25 +246,43 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
     }
     return ListView.separated(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
       itemCount: shown.length,
-      separatorBuilder: (context, index) => const Divider(color: AppColors.line, height: 1),
+      separatorBuilder: (context, index) => const SizedBox(height: 10),
       itemBuilder: (context, i) {
         final r = shown[i];
-        return ListTile(
-          contentPadding: EdgeInsets.zero,
+        return BloomCard(
+          padding: const EdgeInsets.all(14),
           onTap: () {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => AttendanceDetailScreen(record: r)),
             );
           },
-          title: Text(
-            '${_dateText(r.attendanceDate)} · ${_sessionName(r)}',
-            style: const TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.w600, fontSize: 13),
+          child: Row(
+            children: [
+              StatusIcon(status: r.status),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${_dateText(r.attendanceDate)} · ${_sessionName(r)}',
+                      style: const TextStyle(
+                        fontFamily: 'Sora',
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(_subtitle(r), style: AppTextStyles.bodySoft),
+                  ],
+                ),
+              ),
+            ],
           ),
-          subtitle: Text(_subtitle(r), style: AppTextStyles.bodySoft),
-          trailing: _pill(r.status),
         );
       },
     );
@@ -281,8 +293,8 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
-        const SizedBox(height: 80),
-        Center(child: Text(text, style: AppTextStyles.bodySoft)),
+        const SizedBox(height: 60),
+        EmptyState(message: text, icon: Icons.event_busy_outlined),
       ],
     );
   }
@@ -305,7 +317,7 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                 _filters(),
                 if (_records.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 2, 20, 0),
+                    padding: const EdgeInsets.fromLTRB(20, 6, 20, 0),
                     child: Align(
                       alignment: Alignment.centerLeft,
                       child: Text(

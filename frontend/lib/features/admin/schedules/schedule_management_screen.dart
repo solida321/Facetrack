@@ -6,9 +6,14 @@ import '../../../core/network/api_error.dart';
 import '../../../core/network/schedule_api.dart';
 import '../../../core/network/group_api.dart';
 import '../../../core/network/location_api.dart';
+import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/schedule_model.dart';
 import '../../../data/models/group_model.dart';
 import '../../../data/models/location_model.dart';
+import '../../../widgets/app_text_field.dart';
+import '../../../widgets/bloom_card.dart';
+import '../../../widgets/empty_state.dart';
+import '../../../widgets/primary_button.dart';
 import '../locations/location_management_screen.dart';
 
 class ScheduleManagementScreen extends StatefulWidget {
@@ -112,7 +117,7 @@ class _ScheduleManagementScreenState extends State<ScheduleManagementScreen> {
       isScrollControlled: true,
       backgroundColor: AppColors.panel,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (context) => _ScheduleFormSheet(
         existingGroup: existingGroup,
@@ -147,7 +152,7 @@ class _ScheduleManagementScreenState extends State<ScheduleManagementScreen> {
         actions: [
           IconButton(
             tooltip: 'Locations',
-            icon: const Icon(Icons.place_outlined, color: AppColors.primary),
+            icon: const Icon(Icons.place_outlined, color: AppColors.primaryDeep),
             onPressed: () async {
               await Navigator.push(
                 context,
@@ -156,10 +161,17 @@ class _ScheduleManagementScreenState extends State<ScheduleManagementScreen> {
               if (mounted) _load(); // pick up locations added or removed there
             },
           ),
-          IconButton(
-            tooltip: 'Add schedule',
-            icon: const Icon(Icons.add_rounded, color: AppColors.primary),
-            onPressed: () => _openForm(),
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Material(
+              color: AppColors.primary,
+              shape: const CircleBorder(),
+              child: IconButton(
+                tooltip: 'Add schedule',
+                icon: const Icon(Icons.add_rounded, color: Colors.white),
+                onPressed: () => _openForm(),
+              ),
+            ),
           ),
         ],
       ),
@@ -168,8 +180,9 @@ class _ScheduleManagementScreenState extends State<ScheduleManagementScreen> {
               child: CircularProgressIndicator(color: AppColors.primary),
             )
           : grouped.isEmpty
-              ? Center(
-                  child: Text('No schedules yet.', style: AppTextStyles.bodySoft),
+              ? const EmptyState(
+                  message: 'No schedules yet.',
+                  icon: Icons.event_note_outlined,
                 )
               : ListView.builder(
                   padding: const EdgeInsets.all(20),
@@ -182,23 +195,48 @@ class _ScheduleManagementScreenState extends State<ScheduleManagementScreen> {
                         .toSet()
                         .join(', ');
 
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      child: ListTile(
-                        title: Text(
-                          first.sessionName,
-                          style: const TextStyle(
-                            fontFamily: 'Sora',
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                        ),
-                        subtitle: Text(
-                          '$dayLabels · ${first.startTime.substring(0, 5)} – ${first.endTime.substring(0, 5)} · ${_groupName(first.groupId)}',
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: BloomCard(
+                        padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
+                        child: Row(
                           children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: AppColors.primarySoft,
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: const Icon(Icons.schedule_rounded,
+                                  color: AppColors.primaryDeep, size: 22),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    first.sessionName,
+                                    style: const TextStyle(
+                                      fontFamily: 'Sora',
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 15,
+                                      color: AppColors.ink,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '${DateFormatter.shiftRange(first.startTime, first.endTime)} · $dayLabels',
+                                    style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
+                                  ),
+                                  Text(
+                                    _groupName(first.groupId),
+                                    style: AppTextStyles.bodySoft,
+                                  ),
+                                ],
+                              ),
+                            ),
                             IconButton(
                               icon: const Icon(Icons.edit_outlined, size: 20),
                               // Pass the WHOLE card, not just the first day.
@@ -391,10 +429,7 @@ class _ScheduleFormSheetState extends State<_ScheduleFormSheet> {
               style: AppTextStyles.heading,
             ),
             const SizedBox(height: 16),
-            TextField(
-              controller: _nameController,
-              decoration: const InputDecoration(labelText: 'Session name'),
-            ),
+            AppTextField(label: 'Session name', controller: _nameController),
             const SizedBox(height: 12),
             DropdownButtonFormField<int>(
               initialValue: _groupId,
@@ -443,7 +478,10 @@ class _ScheduleFormSheetState extends State<_ScheduleFormSheet> {
                     });
                   },
                   selectedColor: AppColors.primarySoft,
-                  checkmarkColor: AppColors.primary,
+                  checkmarkColor: AppColors.primaryDeep,
+                  backgroundColor: Colors.white,
+                  side: const BorderSide(color: AppColors.line),
+                  shape: const StadiumBorder(),
                 );
               }),
             ),
@@ -480,38 +518,20 @@ class _ScheduleFormSheetState extends State<_ScheduleFormSheet> {
                 ),
               ],
             ),
-            TextField(
+            AppTextField(
+              label: 'Grace period (minutes)',
               controller: _graceController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Grace period (minutes)',
-              ),
             ),
             if (_error != null) ...[
               const SizedBox(height: 12),
               Text(_error!, style: const TextStyle(color: AppColors.absent, fontSize: 12)),
             ],
             const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isSaving ? null : _save,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-                child: _isSaving
-                    ? const SizedBox(
-                        height: 18,
-                        width: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text('Save'),
-              ),
+            PrimaryButton(
+              label: 'Save',
+              isLoading: _isSaving,
+              onPressed: _isSaving ? null : _save,
             ),
           ],
         ),

@@ -9,9 +9,17 @@ import '../../../core/network/schedule_api.dart';
 import '../../../data/models/attendance_record_model.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/schedule_model.dart';
+import '../../../widgets/app_avatar.dart';
+import '../../../widgets/attendance_ring.dart';
 import '../../../widgets/bloom_card.dart';
-import '../../../widgets/status_pill.dart';
+import '../../../widgets/status_icon.dart';
+import '../../../widgets/check_out_text.dart';
+import '../../../widgets/empty_state.dart';
+import '../../../widgets/outline_button.dart';
+import '../../../widgets/primary_button.dart';
+import '../../../widgets/status_chip_row.dart';
 import '../../attendance/check/check_out_screen.dart';
+import '../../attendance/history/attendance_history_screen.dart';
 import '../../attendance/schedule/today_schedule_screen.dart';
 import '../../notifications/notification_bell.dart';
 
@@ -129,6 +137,20 @@ class _EmployeeHomeViewState extends State<EmployeeHomeView> {
     return weekdays[d.weekday - 1];
   }
 
+  /// Tapping Present / Late / Absent opens the history, filtered, for this month.
+  void _openHistory(String status) {
+    final now = DateTime.now();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AttendanceHistoryScreen(
+          initialStatus: status,
+          initialRange: DateTimeRange(start: DateTime(now.year, now.month, 1), end: DateTime(now.year, now.month, now.day)),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthController>().currentUser;
@@ -164,114 +186,48 @@ class _EmployeeHomeViewState extends State<EmployeeHomeView> {
                   children: [
                     Row(
                       children: [
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: AppColors.primarySoft,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.spa_rounded,
-                            color: AppColors.primary,
-                            size: 19,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'bloom',
-                          style: TextStyle(
-                            fontFamily: 'Sora',
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
-                            color: AppColors.ink,
+                        AppAvatar(name: user?.fullName ?? '', size: 48, filled: true),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Good morning, $firstName.',
+                                style: AppTextStyles.headline,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${_weekdayMonth(now)} · ${user?.role.name ?? ''}',
+                                style: AppTextStyles.bodySoft,
+                              ),
+                            ],
                           ),
                         ),
-                        const Spacer(),
                         const NotificationBell(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.primarySoft,
-                            borderRadius: BorderRadius.circular(100),
-                          ),
-                          child: Text(
-                            user?.role.name ?? 'Employee',
-                            style: const TextStyle(
-                              color: AppColors.primary,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                     const SizedBox(height: 20),
 
+                    AttendanceRing(percentage: rate),
+                    const SizedBox(height: 10),
                     Text(
-                      'Good morning, $firstName.',
-                      style: AppTextStyles.headline,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${_weekdayMonth(now)} · ${user?.role.name ?? ''}',
+                      attended == 0
+                          ? 'No check-ins recorded yet this month.'
+                          : 'A steady start. $present on time of $attended scheduled days.',
                       style: AppTextStyles.bodySoft,
                     ),
-                    const SizedBox(height: 20),
-
-                    BloomCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Your month, at a glance',
-                            style: AppTextStyles.subheading,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            attended == 0
-                                ? 'No check-ins recorded yet this month.'
-                                : 'A steady start. $present on time of $attended scheduled days.',
-                            style: AppTextStyles.bodySoft,
-                          ),
-                          const SizedBox(height: 14),
-                          Row(
-                            children: [
-                              Text(
-                                '$rate%',
-                                style: const TextStyle(
-                                  fontFamily: 'Sora',
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 26,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Padding(
-                                padding: const EdgeInsets.only(top: 10),
-                                child: Text(
-                                  'on time',
-                                  style: AppTextStyles.bodySoft,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          Row(
-                            children: [
-                              _statBlock('$present', 'Present'),
-                              _statBlock('$late', 'Late'),
-                              _statBlock('$absent', 'Absent'),
-                            ],
-                          ),
-                        ],
-                      ),
+                    const SizedBox(height: 12),
+                    StatusChipRow(
+                      present: present,
+                      late: late,
+                      absent: absent,
+                      onTap: _openHistory,
                     ),
 
-                    const SizedBox(height: 22),
+                    const SizedBox(height: 24),
 
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -286,73 +242,47 @@ class _EmployeeHomeViewState extends State<EmployeeHomeView> {
                     const SizedBox(height: 10),
 
                     if (user?.groupId == null)
-                      Text(
-                        'You are not assigned to a group yet. Contact your admin.',
-                        style: AppTextStyles.bodySoft,
+                      const EmptyState(
+                        message:
+                            'You are not assigned to a group yet. Contact your admin.',
+                        icon: Icons.group_off_outlined,
                       )
                     else if (_todaySchedules.isEmpty)
-                      Text(
-                        'No shifts scheduled today.',
-                        style: AppTextStyles.bodySoft,
+                      const EmptyState(
+                        message: 'No shifts scheduled today.',
+                        icon: Icons.event_available_outlined,
                       )
                     else
                       ..._todaySchedules.map(_shiftCard),
 
                     const SizedBox(height: 20),
 
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const TodayScheduleScreen(),
-                            ),
-                          );
-                          // Coming back from a check-in: refresh the shift cards.
-                          if (mounted) _load();
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                    PrimaryButton(
+                      label: 'Scan attendance',
+                      icon: Icons.face_retouching_natural_rounded,
+                      onPressed: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const TodayScheduleScreen(),
                           ),
-                        ),
-                        child: const Text(
-                          'Scan attendance',
-                          style: TextStyle(
-                            fontFamily: 'Sora',
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
+                        );
+                        // Coming back from a check-in: refresh the shift cards.
+                        if (mounted) _load();
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    AppOutlineButton(
+                      label: 'My attendance history',
+                      icon: Icons.history_rounded,
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const AttendanceHistoryScreen()),
                       ),
                     ),
                   ],
                 ),
               ),
-      ),
-    );
-  }
-
-  Widget _statBlock(String value, String label) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-              fontFamily: 'Sora',
-              fontWeight: FontWeight.w700,
-              fontSize: 16,
-              color: AppColors.ink,
-            ),
-          ),
-          Text(label, style: AppTextStyles.bodySoft),
-        ],
       ),
     );
   }
@@ -366,27 +296,24 @@ class _EmployeeHomeViewState extends State<EmployeeHomeView> {
     final isLate = record?.status == 'late';
     final isAbsent = record?.status == 'absent' && checkInTime == null;
 
-    final StatusPill pill;
-    if (isAbsent) {
-      pill = StatusPill.absent('Absent');
-    } else if (checkOutTime != null) {
-      pill = isLate ? StatusPill.late('Checked out') : StatusPill.present('Checked out');
-    } else if (checkInTime != null) {
-      pill = isLate ? StatusPill.late('Checked in') : StatusPill.present('Checked in');
-    } else {
-      pill = StatusPill.neutral('Upcoming');
-    }
+    // The round icon at the start of the card shows the status.
+    final String? shiftStatus = isAbsent
+        ? 'absent'
+        : checkInTime != null
+            ? (isLate ? 'late' : 'present')
+            : null;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 12),
       child: BloomCard(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                StatusIcon(status: shiftStatus),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -395,53 +322,50 @@ class _EmployeeHomeViewState extends State<EmployeeHomeView> {
                         s.sessionName,
                         style: const TextStyle(
                           fontFamily: 'Sora',
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                          color: AppColors.ink,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '${s.startTime.substring(0, 5)} – ${s.endTime.substring(0, 5)}',
+                        DateFormatter.shiftRange(s.startTime, s.endTime),
                         style: AppTextStyles.bodySoft,
                       ),
-                      if (checkInTime != null) ...[
+                      if (isAbsent) ...[
                         const SizedBox(height: 2),
-                        Text(
-                          'Checked in at ${DateFormatter.time(checkInTime)}',
-                          style: TextStyle(
-                            fontSize: 10.5,
-                            color: isLate ? AppColors.late : AppColors.present,
-                          ),
+                        const Text(
+                          'Absent',
+                          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.absent),
+                        ),
+                      ] else if (checkInTime == null) ...[
+                        const SizedBox(height: 2),
+                        const Text(
+                          'Upcoming',
+                          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.inkSoft),
                         ),
                       ],
-                      if (checkOutTime != null) ...[
+                      if (checkInTime != null) ...[
                         const SizedBox(height: 2),
-                        Text(
-                          'Checked out at ${DateFormatter.time(checkOutTime)}',
-                          style: const TextStyle(
-                            fontSize: 10.5,
-                            color: AppColors.inkSoft,
-                          ),
-                        ),
+                        CheckInText(record: record),
+                      ],
+                      if (checkOutTime != null || (record?.missingCheckout ?? false)) ...[
+                        const SizedBox(height: 2),
+                        CheckOutText(record: record),
                       ],
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                pill,
               ],
             ),
             // The Check out button only appears while the user is checked in
             // and has not checked out yet.
             if (record != null && checkInTime != null && checkOutTime == null) ...[
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => _openCheckOut(record),
-                  icon: const Icon(Icons.logout_rounded, size: 18),
-                  label: const Text('Check out'),
-                ),
+              const SizedBox(height: 14),
+              AppOutlineButton(
+                label: 'Check out',
+                icon: Icons.logout_rounded,
+                onPressed: () => _openCheckOut(record),
               ),
             ],
           ],

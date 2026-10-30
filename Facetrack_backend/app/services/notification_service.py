@@ -6,6 +6,7 @@ from app.models.notification import Notification
 from app.models.role import Role
 from app.models.user import User
 from app.schemas.notification import NotificationCreate
+from sqlalchemy import func
 
 
 def create_notification(db: Session, data: NotificationCreate) -> Notification:
@@ -67,16 +68,34 @@ def approver_ids_for(db: Session, person: User) -> list[int]:
         ids = [r[0] for r in rows]
     return ids
 
+def admin_ids_for(db: Session, person: User) -> list[int]:
+    """Every active admin (except the person themselves). Upper or lower case does not matter."""
+    rows = (
+        db.query(User.id)
+        .join(Role, User.role_id == Role.id)
+        .filter(
+            func.lower(User.status) == "active",
+            func.lower(Role.name) == "admin",
+            User.id != person.id,
+        )
+        .all()
+    )
+    return [r[0] for r in rows] 
+
+
 
 def notify_approvers(db: Session, person: User, title: str, message: str, type: str) -> None:
-    for uid in approver_ids_for(db, person):
+    # The team's manager reviews first, but admins can review everything,
+    # so they are always told too. A set removes duplicates.
+    ids = set(approver_ids_for(db, person)) | set(admin_ids_for(db, person))
+    for uid in ids:
         notify(db, uid, title, message, type)
-
 
 def count_unread(db: Session, user_id: int) -> int:
     return db.query(Notification).filter(
         Notification.user_id == user_id, Notification.is_read.is_(False)
     ).count()
+
 
 
 def mark_all_read(db: Session, user_id: int) -> int:

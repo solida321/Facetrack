@@ -5,6 +5,10 @@ import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_text_styles.dart';
 import '../../../app/routes/app_routes.dart';
 import '../../../core/controllers/auth_controller.dart';
+import '../../../widgets/app_text_field.dart';
+import '../../../widgets/back_circle_button.dart';
+import '../../../widgets/info_banner.dart';
+import '../../../widgets/primary_button.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -89,98 +93,95 @@ class _RegisterScreenState extends State<RegisterScreen> {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Create account', style: AppTextStyles.heading),
-              const SizedBox(height: 6),
-              Text('Shown only if you\'re not registered yet.', style: AppTextStyles.bodySoft),
-              const SizedBox(height: 26),
-
-              _buildField('Full name', _fullNameController),
-              const SizedBox(height: 14),
-              _buildField('Email', _emailController),
-              const SizedBox(height: 14),
-              _buildField('Phone number', _phoneController),
-              const SizedBox(height: 14),
-              _buildField('Password (at least 8 characters)', _passwordController, obscure: true),
-              const SizedBox(height: 14),
-              _buildField('Confirm password', _confirmController, obscure: true),
-
-              if (_formError != null || auth.errorMessage != null) ...[
-                const SizedBox(height: 10),
-                Text(_formError ?? auth.errorMessage!, style: const TextStyle(color: AppColors.absent, fontSize: 12)),
-              ],
-
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: auth.isLoading ? null : _handleRegister,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
-                  ),
-                  child: auth.isLoading
-                      ? const SizedBox(
-                          height: 18, width: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Text('Create account', style: TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.w600)),
-                ),
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: BackCircleButton(),
               ),
-
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
+              Text('Create your account', style: AppTextStyles.headline),
+              const SizedBox(height: 6),
+              Text(
+                'An admin will approve your account before you can sign in.',
+                style: AppTextStyles.bodySoft,
+              ),
+              const SizedBox(height: 24),
+              AppTextField(
+                label: 'Full name',
+                controller: _fullNameController,
+                icon: Icons.person_outline_rounded,
+                textInputAction: TextInputAction.next,
+              ),
+              const SizedBox(height: 14),
+              AppTextField(
+                label: 'Email',
+                controller: _emailController,
+                icon: Icons.mail_outline_rounded,
+                hint: 'name@company.com',
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+              ),
+              const SizedBox(height: 14),
+              AppTextField(
+                label: 'Phone number',
+                controller: _phoneController,
+                icon: Icons.phone_iphone_rounded,
+                keyboardType: TextInputType.phone,
+                textInputAction: TextInputAction.next,
+              ),
+              const SizedBox(height: 14),
+              AppTextField(
+                label: 'Password',
+                controller: _passwordController,
+                icon: Icons.lock_outline_rounded,
+                hint: 'At least 8 characters',
+                obscure: true,
+                textInputAction: TextInputAction.next,
+              ),
+              const SizedBox(height: 14),
+              AppTextField(
+                label: 'Confirm password',
+                controller: _confirmController,
+                icon: Icons.lock_outline_rounded,
+                hint: 'Type your password again',
+                obscure: true,
+                textInputAction: TextInputAction.done,
+              ),
+              if (_formError != null || auth.errorMessage != null) ...[
+                const SizedBox(height: 16),
+                InfoBanner(
+                  icon: Icons.error_outline_rounded,
+                  title: _formError ?? auth.errorMessage!,
+                  tone: BannerTone.bad,
+                ),
+              ],
+              const SizedBox(height: 24),
+              PrimaryButton(
+                label: 'Create account',
+                onPressed: auth.isLoading ? null : _handleRegister,
+                isLoading: auth.isLoading,
+              ),
+              const SizedBox(height: 12),
               Center(
-                child: GestureDetector(
-                  onTap: () => Navigator.pushReplacementNamed(context, AppRoutes.login),
-                  child: RichText(
-                    text: const TextSpan(
-                      text: "Already registered? ",
-                      style: TextStyle(color: AppColors.inkSoft, fontSize: 12.5),
-                      children: [
-                        TextSpan(
-                          text: 'Sign in',
-                          style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600),
-                        ),
-                      ],
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Already registered?', style: AppTextStyles.bodySoft),
+                    TextButton(
+                      onPressed: () => Navigator.pushReplacementNamed(
+                          context, AppRoutes.login),
+                      child: const Text('Sign in'),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ],
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildField(String label, TextEditingController controller, {bool obscure = false}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: AppTextStyles.label),
-        const SizedBox(height: 6),
-        TextField(
-          controller: controller,
-          obscureText: obscure,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: AppColors.background,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(13),
-              borderSide: const BorderSide(color: AppColors.line),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(13),
-              borderSide: const BorderSide(color: AppColors.line),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

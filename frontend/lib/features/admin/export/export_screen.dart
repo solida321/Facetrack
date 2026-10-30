@@ -7,6 +7,7 @@ import '../../../core/services/export_service.dart';
 import '../../../data/models/group_model.dart';
 
 import 'package:dio/dio.dart';
+import '../../../widgets/primary_button.dart';
 
 class ExportScreen extends StatefulWidget {
   const ExportScreen({super.key});
@@ -89,14 +90,14 @@ class _ExportScreenState extends State<ExportScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
         decoration: BoxDecoration(
-          color: active ? AppColors.primary : AppColors.panel,
-          border: Border.all(color: active ? AppColors.primary : AppColors.line),
+          color: active ? AppColors.primaryDeep : Colors.white,
+          border: Border.all(color: active ? AppColors.primaryDeep : AppColors.line),
           borderRadius: BorderRadius.circular(100),
         ),
         child: Text(label,
-            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: active ? Colors.white : AppColors.inkSoft)),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: active ? Colors.white : AppColors.ink)),
       ),
     );
   }
@@ -137,17 +138,11 @@ class _ExportScreenState extends State<ExportScreen> {
           ]),
           const SizedBox(height: 32),
 
-          ElevatedButton(
+          PrimaryButton(
+            label: 'Download ${_format == 'csv' ? 'CSV' : 'Excel'}',
+            icon: Icons.download_rounded,
+            isLoading: _isExporting,
             onPressed: _isExporting ? null : _download,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              minimumSize: const Size(double.infinity, 52),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            ),
-            child: _isExporting
-                ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : Text('Download ${_format == 'csv' ? 'CSV' : 'Excel'}'),
           ),
         ],
       ),

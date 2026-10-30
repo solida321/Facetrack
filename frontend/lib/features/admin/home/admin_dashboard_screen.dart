@@ -7,15 +7,24 @@ import '../../../core/network/attendance_api.dart';
 import '../../../core/network/correction_api.dart';
 import '../../../core/network/group_api.dart';
 import '../../../core/network/leave_api.dart';
+import '../../../core/network/schedule_api.dart';
 import '../../../core/network/user_api.dart';
+import '../../../core/services/attendance_csv_service.dart';
+import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/attendance_record_model.dart';
+import '../../../data/models/attendance_row.dart';
 import '../../../data/models/group_model.dart';
+import '../../../data/models/schedule_model.dart';
 import '../../../data/models/user_model.dart';
+import '../../../widgets/app_text_field.dart';
 import '../../../widgets/bloom_card.dart';
+import '../../../widgets/empty_state.dart';
+import '../../../widgets/filter_chips.dart';
+import '../../../widgets/outline_button.dart';
 import '../../../widgets/stat_card.dart';
-import '../export/export_screen.dart';
+import '../../../widgets/status_pill.dart';
 import '../../notifications/notification_bell.dart';
-import '../../reports/attendance_report_screen.dart';
+import 'package:flutter/rendering.dart';
 
 
 
@@ -33,15 +42,79 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   int _pendingLeaves = 0;
   int _pendingCorrections = 0;
   int _onLeaveToday = 0;
+  List<ScheduleModel> _schedules = [];
   bool _isLoading = true;
-  int _days = 7; // chart period: 7 or 30
+
+  // Period: 0 = 7 days, 1 = 30 days, 2 = custom range.
+  int _preset = 0;
+  late DateTime _from;
+  late DateTime _to;
+
+  // Filters for the attendance cards and the export.
+  int _teamIndex = 0; // 0 = all teams, otherwise index + 1 in _groups
+  int _statusIndex = 0;
+  final _search = TextEditingController();
+  int _shown = 20;
+  bool _isExporting = false;
+
+  static const _statusKeys = ['all', 'checked_in', 'present', 'late', 'absent', 'early_leave', 'missing'];
+
+  final _scroll = ScrollController();
+  final _detailsKey = GlobalKey();
 
   static const _absentBg = Color(0xFFF8E2DF);
 
   @override
   void initState() {
     super.initState();
+    _applyPreset(7);
     _load();
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  DateTime get _today {
+    final n = DateTime.now();
+    return DateTime(n.year, n.month, n.day);
+  }
+
+  void _applyPreset(int days) {
+    _to = _today;
+    _from = _today.subtract(Duration(days: days - 1));
+    _shown = 20;
+  }
+
+  Future<void> _pickRange() async {
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2024),
+      lastDate: _today,
+      initialDateRange: DateTimeRange(start: _from, end: _to),
+    );
+    if (picked != null) {
+      setState(() {
+        _preset = 2;
+        _from = DateTime(picked.start.year, picked.start.month, picked.start.day);
+        _to = DateTime(picked.end.year, picked.end.month, picked.end.day);
+        _shown = 20;
+      });
+    }
+  }
+
+  void _onPeriod(int i) {
+    if (i == 2) {
+      _pickRange();
+      return;
+    }
+    setState(() {
+      _preset = i;
+      _applyPreset(i == 0 ? 7 : 30);
+    });
   }
 
   bool _sameDay(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
@@ -54,6 +127,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       final users = await UserApi.getAll();
       final records = await AttendanceApi.getAll();
       final groups = await GroupApi.getAll();
+      List<ScheduleModel> schedules = [];
+      try {
+        schedules = await ScheduleApi.getAll();
+      } catch (_) {}
       final leaves = await LeaveApi.getAllLeaves();
       final corrections = await CorrectionApi.getAllCorrections();
       if (!mounted) return;
@@ -65,6 +142,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         _users = users;
         _records = records;
         _groups = groups;
+        _schedules = schedules;
         _pendingLeaves = leaves.where((l) => l.status == 'pending').length;
         _pendingCorrections = corrections.where((c) => c.status == 'pending').length;
         _onLeaveToday = leaves.where((l) {
@@ -79,13 +157,89 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
   }
 
-  DateTime get _since {
-    final now = DateTime.now();
-    return DateTime(now.year, now.month, now.day).subtract(Duration(days: _days - 1));
+  int get _days => _to.difference(_from).inDays + 1;
+
+  List<AttendanceRecordModel> get _inRange => _records.where((r) {
+        final d = DateTime(r.attendanceDate.year, r.attendanceDate.month, r.attendanceDate.day);
+        return !d.isBefore(_from) && !d.isAfter(_to);
+      }).toList();
+
+  /// Records in the period, after the team, status and search filters.
+  List<AttendanceRow> _filteredRows(List<AttendanceRecordModel> range) {
+    final rows = AttendanceRow.build(records: range, users: _users, groups: _groups, schedules: _schedules);
+    final teamName = _teamIndex == 0 ? null : _groups[_teamIndex - 1].name;
+    final status = _statusKeys[_statusIndex];
+    final q = _search.text.trim().toLowerCase();
+
+    final list = rows.where((r) {
+      if (teamName != null && r.team != teamName) return false;
+      switch (status) {
+        case 'all':
+          break;
+        case 'checked_in':
+          if (r.record.status != 'present' && r.record.status != 'late') return false;
+          break;
+        case 'early_leave':
+          if (!r.record.leftEarly) return false;
+          break;
+        case 'missing':
+          if (!r.record.missingCheckout) return false;
+          break;
+        default:
+          if (r.record.status != status) return false;
+      }
+      if (q.isNotEmpty &&
+          !r.name.toLowerCase().contains(q) &&
+          !r.email.toLowerCase().contains(q) &&
+          '${r.employeeId}' != q) {
+        return false;
+      }
+      return true;
+    }).toList();
+
+    list.sort((a, b) {
+      final byDate = b.date.compareTo(a.date);
+      return byDate != 0 ? byDate : a.name.compareTo(b.name);
+    });
+    return list;
   }
 
-  List<AttendanceRecordModel> get _inRange =>
-      _records.where((r) => !r.attendanceDate.isBefore(_since)).toList();
+  /// A card on top was tapped: show today's records for that status in the
+  /// details list below, and scroll down to it.
+  void _showToday(String status) {
+    setState(() {
+      _preset = 2;
+      _from = _today;
+      _to = _today;
+      _teamIndex = 0;
+      _statusIndex = _statusKeys.indexOf(status);
+      _search.clear();
+      _shown = 20;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _detailsKey.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(ctx, duration: const Duration(milliseconds: 350), curve: Curves.easeOut);
+      }
+    });
+  }
+
+  Future<void> _export(List<AttendanceRow> rows) async {
+    if (rows.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nothing to export for this filter.')));
+      return;
+    }
+    setState(() => _isExporting = true);
+    try {
+      await AttendanceCsvService.share(rows, from: _from, to: _to);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not export. Please try again.')));
+      }
+    } finally {
+      if (mounted) setState(() => _isExporting = false);
+    }
+  }
 
   int _count(List<AttendanceRecordModel> list, String status) => list.where((r) => r.status == status).length;
 
@@ -93,6 +247,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget build(BuildContext context) {
     final now = DateTime.now();
     final range = _inRange;
+    final rows = _filteredRows(range);
     final present = _count(range, 'present');
     final late = _count(range, 'late');
     final absent = _count(range, 'absent');
@@ -110,27 +265,40 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 color: AppColors.primary,
                 onRefresh: _load,
                 child: ListView(
+                  controller: _scroll,
+                 scrollCacheExtent: const ScrollCacheExtent.pixels(6000), // keeps the details list built so the scroll can find it/ keeps the details list built so the scroll can find it
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
                   children: [
-                    Text('Dashboard', style: AppTextStyles.headline),
-                    const SizedBox(height: 2),
-                    Text('${now.day}/${now.month}/${now.year} · All teams', style: AppTextStyles.bodySoft),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Dashboard', style: AppTextStyles.headline),
+                              const SizedBox(height: 2),
+                              Text('${now.day}/${now.month}/${now.year} · All teams', style: AppTextStyles.bodySoft),
+                            ],
+                          ),
+                        ),
+                        const NotificationBell(),
+                      ],
+                    ),
                     const SizedBox(height: 14),
-                    const AttendanceReportButton(),
                     const SizedBox(height: 18),
 
                     // ---- Today ----
                     Row(
                       children: [
-                        Expanded(child: StatCard(value: '${today.where((r) => r.status == 'present' || r.status == 'late').length}', label: 'Checked in today', color: AppColors.present, background: AppColors.presentBg)),
+                        Expanded(child: StatCard(value: '${today.where((r) => r.status == 'present' || r.status == 'late').length}', label: 'Checked in today', color: AppColors.present, background: AppColors.presentBg, onTap: () => _showToday('checked_in'))),
                         const SizedBox(width: 8),
-                        Expanded(child: StatCard(value: '${_count(today, 'late')}', label: 'Late today', color: AppColors.late, background: AppColors.lateBg)),
+                        Expanded(child: StatCard(value: '${_count(today, 'late')}', label: 'Late today', color: AppColors.late, background: AppColors.lateBg, onTap: () => _showToday('late'))),
                       ],
                     ),
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Expanded(child: StatCard(value: '${_count(today, 'absent')}', label: 'Absent today', color: AppColors.absent, background: _absentBg)),
+                        Expanded(child: StatCard(value: '${_count(today, 'absent')}', label: 'Absent today', color: AppColors.absent, background: _absentBg, onTap: () => _showToday('absent'))),
                         const SizedBox(width: 8),
                         Expanded(child: StatCard(value: '$_onLeaveToday', label: 'On leave', color: AppColors.primary, background: AppColors.primarySoft)),
                       ],
@@ -145,29 +313,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     ),
                     const SizedBox(height: 22),
 
-                    // ---- Period + export ----
-                    Row(
-                      children: [
-                        _periodChip('7 days', 7),
-                        const SizedBox(width: 8),
-                        _periodChip('30 days', 30),
-                        const Spacer(),
-                        const NotificationBell(),
-                        GestureDetector(
-                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ExportScreen())),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(border: Border.all(color: AppColors.primary), borderRadius: BorderRadius.circular(100)),
-                            child: const Row(
-                              children: [
-                                Icon(Icons.download_rounded, size: 16, color: AppColors.primary),
-                                SizedBox(width: 6),
-                                Text('Export', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
+                    // ---- Period ----
+                    AppFilterChips(
+                      labels: const ['7 days', '30 days', 'Custom'],
+                      selected: _preset,
+                      onSelected: _onPeriod,
+                    ),
+                    const SizedBox(height: 10),
+                    GestureDetector(
+                      onTap: _pickRange,
+                      child: Row(
+                        children: [
+                          const Icon(Icons.date_range_rounded, size: 16, color: AppColors.primaryDeep),
+                          const SizedBox(width: 6),
+                          Text('${DateFormatter.date(_from)} – ${DateFormatter.date(_to)}', style: AppTextStyles.bodySoft),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 14),
 
@@ -245,6 +406,77 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     _attentionRow('Leave requests waiting', _pendingLeaves),
                     _attentionRow('Correction requests waiting', _pendingCorrections),
                     _attentionRow('New accounts waiting for activation', pendingUsers),
+                    const SizedBox(height: 22),
+
+                    // ---- Attendance details + export ----
+                    Row(
+                      key: _detailsKey,
+                      children: [
+                        Expanded(child: Text('Attendance details', style: AppTextStyles.subheading)),
+                        GestureDetector(
+                          onTap: _isExporting ? null : () => _export(rows),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              border: Border.all(color: AppColors.primary, width: 1.5),
+                              borderRadius: BorderRadius.circular(100),
+                            ),
+                            child: _isExporting
+                                ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary))
+                                : const Row(
+                                    children: [
+                                      Icon(Icons.download_rounded, size: 16, color: AppColors.primaryDeep),
+                                      SizedBox(width: 6),
+                                      Text('Export', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.primaryDeep)),
+                                    ],
+                                  ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    AppTextField(
+                      label: 'Search',
+                      controller: _search,
+                      hint: 'Name, email or employee ID',
+                      icon: Icons.search_rounded,
+                      onChanged: (_) => setState(() => _shown = 20),
+                    ),
+                    const SizedBox(height: 12),
+                    AppFilterChips(
+                      labels: ['All teams', for (final g in _groups) g.name],
+                      selected: _teamIndex,
+                      onSelected: (i) => setState(() {
+                        _teamIndex = i;
+                        _shown = 20;
+                      }),
+                    ),
+                    const SizedBox(height: 8),
+                    AppFilterChips(
+                      labels: const ['All', 'Checked in', 'Present', 'Late', 'Absent', 'Early leave', 'Missing check-out'],
+                      selected: _statusIndex,
+                      onSelected: (i) => setState(() {
+                        _statusIndex = i;
+                        _shown = 20;
+                      }),
+                    ),
+                    const SizedBox(height: 10),
+                    Text('${rows.length} records · Export saves all of them', style: AppTextStyles.bodySoft),
+                    const SizedBox(height: 10),
+                    if (rows.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: EmptyState(message: 'No records for this filter.', icon: Icons.assessment_outlined),
+                      )
+                    else ...[
+                      for (final r in rows.take(_shown)) _rowCard(r),
+                      if (rows.length > _shown)
+                        AppOutlineButton(
+                          label: 'Show more (${rows.length - _shown} left)',
+                          onPressed: () => setState(() => _shown += 20),
+                        ),
+                    ],
                   ],
                 ),
               ),
@@ -314,7 +546,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Widget _dailyLineChart(List<AttendanceRecordModel> range) {
-    final start = _since;
+    final start = _from;
     final spots = <FlSpot>[];
     double maxY = 1;
 
@@ -338,7 +570,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         bottomTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
-            interval: _days == 7 ? 1 : 5,
+            interval: _days <= 7 ? 1.0 : (_days / 6).ceilToDouble(),
             getTitlesWidget: (value, meta) {
               final day = start.add(Duration(days: value.toInt()));
               return Padding(
@@ -354,28 +586,90 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           spots: spots,
           isCurved: true,
           color: AppColors.primary,
-          barWidth: 2.5,
-          dotData: FlDotData(show: _days == 7),
+          barWidth: 3,
+          dotData: FlDotData(show: _days <= 14),
           belowBarData: BarAreaData(show: true, color: AppColors.primary.withValues(alpha: 0.08)),
         ),
       ],
     ));
   }
 
-  Widget _periodChip(String label, int days) {
-    final active = _days == days;
-    return GestureDetector(
-      onTap: () => setState(() => _days = days),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: active ? AppColors.primarySoft : AppColors.panel,
-          border: Border.all(color: active ? AppColors.primary : AppColors.line),
-          borderRadius: BorderRadius.circular(100),
+  Widget _rowCard(AttendanceRow r) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: BloomCard(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(r.name, style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 2),
+                      Text('ID ${r.employeeId} · ${r.email}', style: AppTextStyles.bodySoft, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(DateFormatter.date(r.date), style: AppTextStyles.label),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text('${r.team} · ${r.shift}', style: AppTextStyles.bodySoft),
+            const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: _timeBlock('Check-in', r.checkIn, _inPill(r.checkInStatus))),
+                Expanded(child: _timeBlock('Check-out', r.checkOut, _outPill(r.checkOutStatus))),
+              ],
+            ),
+          ],
         ),
-        child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: active ? AppColors.primary : AppColors.inkSoft)),
       ),
     );
+  }
+
+  Widget _timeBlock(String title, String time, Widget pill) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: AppTextStyles.label),
+          const SizedBox(height: 2),
+          Text(time, style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 6),
+          pill,
+        ],
+      );
+
+  Widget _inPill(String s) {
+    switch (s) {
+      case 'Present':
+        return StatusPill.present(s);
+      case 'Late':
+        return StatusPill.late(s);
+      case 'Absent':
+        return StatusPill.absent(s);
+      default:
+        return StatusPill.neutral(s);
+    }
+  }
+
+  Widget _outPill(String s) {
+    switch (s) {
+      case 'On time':
+        return StatusPill.present(s);
+      case 'Early leave':
+        return StatusPill.late(s);
+      case 'Missing':
+        return StatusPill.absent(s);
+      default:
+        return StatusPill.neutral(s);
+    }
   }
 
   Widget _legend(Color color, String text) => Row(
@@ -387,20 +681,32 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       );
 
   Widget _attentionRow(String label, int count) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
-      decoration: BoxDecoration(border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(13)),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: AppTextStyles.body),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(color: count == 0 ? AppColors.line : AppColors.lateBg, borderRadius: BorderRadius.circular(100)),
-            child: Text('$count', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 11, color: count == 0 ? AppColors.inkSoft : AppColors.late)),
-          ),
-        ],
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: BloomCard(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(child: Text(label, style: AppTextStyles.body)),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              decoration: BoxDecoration(
+                color: count == 0 ? AppColors.neutralBg : AppColors.lateBg,
+                borderRadius: BorderRadius.circular(100),
+              ),
+              child: Text(
+                '$count',
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                  color: count == 0 ? AppColors.inkSoft : AppColors.late,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -34,15 +34,15 @@ class _ManagerShellState extends State<ManagerShell> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _index,
         onTap: (i) => setState(() => _index = i),
-        selectedItemColor: AppColors.primary,
+        selectedItemColor: AppColors.primaryDeep,
         unselectedItemColor: AppColors.inkSoft,
-        backgroundColor: AppColors.panel,
+        backgroundColor: Colors.white,
         type: BottomNavigationBarType.fixed,
         selectedFontSize: 10,
         unselectedFontSize: 10,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_today_rounded), label: 'Schedule'),
+          BottomNavigationBarItem(icon: Icon(Icons.access_time_filled_rounded), label: 'Shifts'),
           BottomNavigationBarItem(icon: Icon(Icons.groups_rounded), label: 'Team'),
           BottomNavigationBarItem(icon: Icon(Icons.fact_check_rounded), label: 'Approvals'),
           BottomNavigationBarItem(icon: Icon(Icons.event_note_rounded), label: 'Leave'),

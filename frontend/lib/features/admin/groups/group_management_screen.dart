@@ -6,6 +6,10 @@ import '../../../core/network/api_error.dart';
 import '../../../core/network/group_api.dart';
 import '../../../core/network/user_api.dart';
 import '../../../data/models/group_model.dart';
+import '../../../widgets/app_text_field.dart';
+import '../../../widgets/bloom_card.dart';
+import '../../../widgets/empty_state.dart';
+import '../../../widgets/primary_button.dart';
 import 'team_members_screen.dart';
 
 class GroupManagementScreen extends StatefulWidget {
@@ -88,7 +92,7 @@ class _GroupManagementScreenState extends State<GroupManagementScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.panel,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
       builder: (context) => StatefulBuilder(
         builder: (context, setSheetState) => Padding(
           padding: EdgeInsets.only(
@@ -103,11 +107,10 @@ class _GroupManagementScreenState extends State<GroupManagementScreen> {
             children: [
               Text(existing != null ? 'Edit team' : 'New team', style: AppTextStyles.heading),
               const SizedBox(height: 16),
-              TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Name')),
+              AppTextField(label: 'Name', controller: nameController),
               const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
+              PrimaryButton(
+                  label: 'Save',
                   onPressed: () async {
                     if (nameController.text.trim().isEmpty) return;
                     final group = GroupModel(
@@ -124,12 +127,6 @@ class _GroupManagementScreenState extends State<GroupManagementScreen> {
                     _load();
                     if (context.mounted) Navigator.pop(context);
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  child: const Text('Save'),
-                ),
               ),
             ],
           ),
@@ -158,17 +155,27 @@ class _GroupManagementScreenState extends State<GroupManagementScreen> {
           ],
         ),
         actions: [
-          IconButton(
-            tooltip: 'New team',
-            icon: const Icon(Icons.add_rounded, color: AppColors.primary),
-            onPressed: () => _openForm(),
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Material(
+              color: AppColors.primary,
+              shape: const CircleBorder(),
+              child: IconButton(
+                tooltip: 'New team',
+                icon: const Icon(Icons.add_rounded, color: Colors.white),
+                onPressed: () => _openForm(),
+              ),
+            ),
           ),
         ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
           : _groups.isEmpty
-              ? Center(child: Text('No teams yet. Tap + to create one.', style: AppTextStyles.bodySoft))
+              ? const EmptyState(
+                  message: 'No teams yet. Tap + to create one.',
+                  icon: Icons.groups_2_outlined,
+                )
               : RefreshIndicator(
                   color: AppColors.primary,
                   onRefresh: _load,
@@ -178,18 +185,42 @@ class _GroupManagementScreenState extends State<GroupManagementScreen> {
                     itemBuilder: (context, i) {
                       final g = _groups[i];
                       final count = _memberCount[g.id] ?? 0;
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        child: ListTile(
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: BloomCard(
                           onTap: () => _openTeam(g),
-                          title: Text(
-                            g.name,
-                            style: const TextStyle(fontFamily: 'Sora', fontWeight: FontWeight.w600, fontSize: 13),
-                          ),
-                          subtitle: Text(count == 1 ? '1 person' : '$count people', style: AppTextStyles.bodySoft),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
+                          padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
+                          child: Row(
                             children: [
+                              Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primarySoft,
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: const Icon(Icons.groups_rounded,
+                                    color: AppColors.primaryDeep, size: 22),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      g.name,
+                                      style: const TextStyle(
+                                        fontFamily: 'Sora',
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 15,
+                                        color: AppColors.ink,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(count == 1 ? '1 person' : '$count people', style: AppTextStyles.bodySoft),
+                                  ],
+                                ),
+                              ),
                               IconButton(
                                 tooltip: 'Edit team',
                                 icon: const Icon(Icons.edit_outlined, size: 20),

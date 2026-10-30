@@ -30,13 +30,15 @@ class _EmployeeShellState extends State<EmployeeShell> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _index,
         onTap: (i) => setState(() => _index = i),
-        selectedItemColor: AppColors.primary,
+        selectedItemColor: AppColors.primaryDeep,
         unselectedItemColor: AppColors.inkSoft,
-        backgroundColor: AppColors.panel,
+        backgroundColor: Colors.white,
         type: BottomNavigationBarType.fixed,
+        selectedFontSize: 11,
+        unselectedFontSize: 11,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_today_rounded), label: 'Schedule'),
+          BottomNavigationBarItem(icon: Icon(Icons.access_time_filled_rounded), label: 'Shifts'),
           BottomNavigationBarItem(icon: Icon(Icons.event_note_rounded), label: 'Leave'),
           BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
         ],

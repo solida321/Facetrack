@@ -8,6 +8,13 @@ import '../../../core/network/role_api.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/models/group_model.dart';
 import '../../../data/models/role_model.dart';
+import '../../../widgets/app_avatar.dart';
+import '../../../widgets/app_text_field.dart';
+import '../../../widgets/bloom_card.dart';
+import '../../../widgets/empty_state.dart';
+import '../../../widgets/filter_chips.dart';
+import '../../../widgets/primary_button.dart';
+import '../../../widgets/status_pill.dart';
 import '../groups/group_management_screen.dart';
 
 class UserManagementScreen extends StatefulWidget {
@@ -193,7 +200,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       isScrollControlled: true,
       backgroundColor: AppColors.panel,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (context) => StatefulBuilder(
         builder: (context, setSheetState) => Padding(
@@ -210,20 +217,18 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               children: [
                 Text('Create user', style: AppTextStyles.heading),
                 const SizedBox(height: 16),
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Full name'),
-                ),
+                AppTextField(label: 'Full name', controller: nameController),
                 const SizedBox(height: 12),
-                TextField(
+                AppTextField(
+                  label: 'Email',
                   controller: emailController,
-                  decoration: const InputDecoration(labelText: 'Email'),
+                  keyboardType: TextInputType.emailAddress,
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                AppTextField(
+                  label: 'Password',
                   controller: passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Password'),
+                  obscure: true,
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int>(
@@ -266,9 +271,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       setSheetState(() => createStatus = v ?? 'active'),
                 ),
                 const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
+                PrimaryButton(
+                    label: 'Create',
                     onPressed: () async {
                       if (nameController.text.trim().isEmpty ||
                           emailController.text.trim().isEmpty ||
@@ -287,12 +291,6 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       _load();
                       if (context.mounted) Navigator.pop(context);
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    child: const Text('Create'),
-                  ),
                 ),
               ],
             ),
@@ -342,31 +340,13 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
   int _countStatus(String status) => _users.where((u) => u.status == status).length;
 
-  Widget _chip({
-    required String label,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: ChoiceChip(
-        label: Text(label),
-        selected: selected,
-        onSelected: (_) => onTap(),
-        selectedColor: AppColors.primarySoft,
-        backgroundColor: AppColors.panel,
-        side: const BorderSide(color: AppColors.line),
-        labelStyle: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: selected ? AppColors.primary : AppColors.inkSoft,
-        ),
-      ),
-    );
-  }
+  static const _statusKeys = ['all', 'active', 'pending_approval', 'inactive'];
 
   Widget _filters() {
     final teamName = _teamFilter == null ? 'All teams' : _groupName(_teamFilter);
+    final roleIndex = _roleFilter == null
+        ? 0
+        : _roles.indexWhere((r) => r.id == _roleFilter) + 1;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
       child: Column(
@@ -387,53 +367,24 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     ),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           // Status
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _chip(
-                  label: 'All ${_users.length}',
-                  selected: _statusFilter == 'all',
-                  onTap: () => setState(() => _statusFilter = 'all'),
-                ),
-                _chip(
-                  label: 'Active ${_countStatus('active')}',
-                  selected: _statusFilter == 'active',
-                  onTap: () => setState(() => _statusFilter = 'active'),
-                ),
-                _chip(
-                  label: 'Pending ${_countStatus('pending_approval')}',
-                  selected: _statusFilter == 'pending_approval',
-                  onTap: () => setState(() => _statusFilter = 'pending_approval'),
-                ),
-                _chip(
-                  label: 'Inactive ${_countStatus('inactive')}',
-                  selected: _statusFilter == 'inactive',
-                  onTap: () => setState(() => _statusFilter = 'inactive'),
-                ),
-              ],
-            ),
+          AppFilterChips(
+            labels: [
+              'All ${_users.length}',
+              'Active ${_countStatus('active')}',
+              'Pending ${_countStatus('pending_approval')}',
+              'Inactive ${_countStatus('inactive')}',
+            ],
+            selected: _statusKeys.indexOf(_statusFilter),
+            onSelected: (i) => setState(() => _statusFilter = _statusKeys[i]),
           ),
+          const SizedBox(height: 8),
           // Role
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _chip(
-                  label: 'Any role',
-                  selected: _roleFilter == null,
-                  onTap: () => setState(() => _roleFilter = null),
-                ),
-                for (final r in _roles)
-                  _chip(
-                    label: r.name,
-                    selected: _roleFilter == r.id,
-                    onTap: () => setState(() => _roleFilter = r.id),
-                  ),
-              ],
-            ),
+          AppFilterChips(
+            labels: ['Any role', for (final r in _roles) r.name],
+            selected: roleIndex < 0 ? 0 : roleIndex,
+            onSelected: (i) => setState(() => _roleFilter = i == 0 ? null : _roles[i - 1].id),
           ),
           const SizedBox(height: 4),
           Row(
@@ -449,12 +400,13 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 ],
                 child: IgnorePointer(
                   child: InputChip(
-                    avatar: const Icon(Icons.groups_outlined, size: 16, color: AppColors.primary),
+                    avatar: const Icon(Icons.groups_outlined, size: 16, color: AppColors.primaryDeep),
                     label: Text(teamName),
                     onPressed: () {},
-                    backgroundColor: _teamFilter == null ? AppColors.panel : AppColors.primarySoft,
+                    backgroundColor: _teamFilter == null ? Colors.white : AppColors.primarySoft,
                     side: const BorderSide(color: AppColors.line),
-                    labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                    shape: const StadiumBorder(),
+                    labelStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.ink),
                   ),
                 ),
               ),
@@ -473,10 +425,21 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
-        const SizedBox(height: 80),
-        Center(child: Text(text, style: AppTextStyles.bodySoft)),
+        const SizedBox(height: 60),
+        EmptyState(message: text, icon: Icons.person_search_outlined),
       ],
     );
+  }
+
+  StatusPill _statusPill(String status) {
+    switch (status) {
+      case 'active':
+        return StatusPill.present('Active');
+      case 'inactive':
+        return StatusPill.neutral('Inactive');
+      default:
+        return StatusPill.late('Pending');
+    }
   }
 
   @override
@@ -503,7 +466,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         actions: [
           IconButton(
             tooltip: 'Teams',
-            icon: const Icon(Icons.groups_outlined, color: AppColors.primary),
+            icon: const Icon(Icons.groups_outlined, color: AppColors.primaryDeep),
             onPressed: () async {
               await Navigator.push(
                 context,
@@ -512,10 +475,17 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               if (mounted) _load(); // pick up teams added, renamed or removed there
             },
           ),
-          IconButton(
-            tooltip: 'Add user',
-            icon: const Icon(Icons.add_rounded, color: AppColors.primary),
-            onPressed: _openCreateForm,
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Material(
+              color: AppColors.primary,
+              shape: const CircleBorder(),
+              child: IconButton(
+                tooltip: 'Add user',
+                icon: const Icon(Icons.add_rounded, color: Colors.white),
+                onPressed: _openCreateForm,
+              ),
+            ),
           ),
         ],
       ),
@@ -528,7 +498,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 _filters(),
                 if (_users.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 2, 20, 0),
+                    padding: const EdgeInsets.fromLTRB(20, 6, 20, 0),
                     child: Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
@@ -546,117 +516,89 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         : shown.isEmpty
                             ? _scrollableMessage('No users match your filters.')
                             : ListView.builder(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(20),
-              itemCount: shown.length,
-              itemBuilder: (context, i) {
-                final u = shown[i];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 18,
-                              backgroundColor: AppColors.primarySoft,
-                              child: Text(
-                                u.fullName.isNotEmpty ? u.fullName[0] : '?',
-                                style: const TextStyle(
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 12,
-                                ),
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                                itemCount: shown.length,
+                                itemBuilder: (context, i) => _userCard(shown[i]),
                               ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    u.fullName,
-                                    style: const TextStyle(
-                                      fontFamily: 'Sora',
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 12.5,
-                                    ),
-                                  ),
-                                  Text(
-                                    '${u.role.name} · ${_groupName(u.groupId)}',
-                                    style: AppTextStyles.bodySoft,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: u.status == 'active'
-                                    ? AppColors.presentBg
-                                    : AppColors.lateBg,
-                                borderRadius: BorderRadius.circular(100),
-                              ),
-                              child: Text(
-                                u.status,
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w700,
-                                  color: u.status == 'active'
-                                      ? AppColors.present
-                                      : AppColors.late,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 6,
-                          children: [
-                            if (u.status != 'active')
-                              TextButton(
-                                onPressed: () => _activate(u),
-                                child: const Text('Activate'),
-                              ),
-                            if (u.status == 'active')
-                              TextButton(
-                                onPressed: () => _deactivate(u),
-                                child: const Text('Deactivate'),
-                              ),
-                            TextButton(
-                              onPressed: () => _assignGroup(u),
-                              child: const Text('Team'),
-                            ),
-                            TextButton(
-                              onPressed: () => _assignRole(u),
-                              child: const Text('Role'),
-                            ),
-                            TextButton(
-                              onPressed: () => _deleteUser(u),
-                              child: const Text(
-                                'Delete',
-                                style: TextStyle(color: AppColors.absent),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
                   ),
                 ),
               ],
             ),
+    );
+  }
+
+  Widget _userCard(UserModel u) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: BloomCard(
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 6),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                AppAvatar(name: u.fullName, size: 44, muted: u.status == 'inactive'),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        u.fullName,
+                        style: const TextStyle(
+                          fontFamily: 'Sora',
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          color: AppColors.ink,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${u.role.name} · ${_groupName(u.groupId)}',
+                        style: AppTextStyles.bodySoft,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _statusPill(u.status),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Wrap(
+              spacing: 2,
+              children: [
+                if (u.status != 'active')
+                  TextButton(
+                    onPressed: () => _activate(u),
+                    child: const Text('Activate'),
+                  ),
+                if (u.status == 'active')
+                  TextButton(
+                    onPressed: () => _deactivate(u),
+                    child: const Text('Deactivate'),
+                  ),
+                TextButton(
+                  onPressed: () => _assignGroup(u),
+                  child: const Text('Team'),
+                ),
+                TextButton(
+                  onPressed: () => _assignRole(u),
+                  child: const Text('Role'),
+                ),
+                TextButton(
+                  onPressed: () => _deleteUser(u),
+                  child: const Text(
+                    'Delete',
+                    style: TextStyle(color: AppColors.absent),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -4,10 +4,15 @@ import 'package:provider/provider.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_text_styles.dart';
 import '../../../core/controllers/auth_controller.dart';
+import '../../../core/network/attendance_api.dart';
 import '../../../core/network/schedule_api.dart';
+import '../../../data/models/attendance_record_model.dart';
 import '../../../data/models/schedule_model.dart';
-import '../../../widgets/bloom_card.dart';
 import '../../face/scan/face_scan_screen.dart';
+import '../check/check_out_screen.dart';
+import '../../../widgets/shift_action_card.dart';
+import '../../../widgets/back_circle_button.dart';
+import '../../../widgets/empty_state.dart';
 
 class TodayScheduleScreen extends StatefulWidget {
   const TodayScheduleScreen({super.key});
@@ -18,6 +23,7 @@ class TodayScheduleScreen extends StatefulWidget {
 
 class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
   List<ScheduleModel> _schedules = [];
+  List<AttendanceRecordModel> _records = []; // own records, to know what is already done
   bool _isLoading = true;
   String? _error;
 
@@ -55,8 +61,18 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
         return false;
       }).toList();
 
+      // Own records, so a shift that is already checked in shows Check out, not Check in.
+      var records = <AttendanceRecordModel>[];
+      final userId = auth.currentUser?.id;
+      if (userId != null) {
+        try {
+          records = await AttendanceApi.getMyHistory(userId);
+        } catch (_) {}
+      }
+
       setState(() {
         _schedules = todaysSchedules;
+        _records = records;
         _isLoading = false;
       });
     } catch (e) {
@@ -67,16 +83,54 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
     }
   }
 
+  AttendanceRecordModel? _todayRecordFor(int scheduleId) {
+    final now = DateTime.now();
+    for (final r in _records) {
+      final d = r.attendanceDate;
+      if (r.scheduleId == scheduleId && d.year == now.year && d.month == now.month && d.day == now.day) {
+        return r;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _checkIn(ScheduleModel s) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => FaceScanScreen(scheduleId: s.id)),
+    );
+    if (mounted) _loadSchedules();
+  }
+
+  Future<void> _checkOut(AttendanceRecordModel record) async {
+    await confirmAndCheckOut(context, record);
+    if (mounted) _loadSchedules();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        title: Text('Today\'s schedule', style: AppTextStyles.headline),
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+              child: Row(
+                children: [
+                  const BackCircleButton(),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text('Today\'s schedule', style: AppTextStyles.headline),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(child: _buildBody()),
+          ],
+        ),
       ),
-      body: SafeArea(child: _buildBody()),
     );
   }
 
@@ -87,98 +141,35 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
       );
     }
     if (_error != null) {
-      return Center(
-        child: Text(
-          _error!,
-          style: AppTextStyles.bodySoft,
-          textAlign: TextAlign.center,
-        ),
-      );
+      return EmptyState(message: _error!, icon: Icons.group_off_outlined);
     }
     if (_schedules.isEmpty) {
-      return Center(
-        child: Text(
-          'No shifts scheduled today.',
-          style: AppTextStyles.bodySoft,
-        ),
+      return const EmptyState(
+        message: 'No shifts scheduled today.',
+        icon: Icons.event_available_outlined,
       );
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      itemCount: _schedules.length,
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+      itemCount: _schedules.length + 1,
       itemBuilder: (context, index) {
-        final s = _schedules[index];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: BloomCard(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: AppColors.primarySoft,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.schedule_rounded,
-                    color: AppColors.primary,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${s.startTime.substring(0, 5)} – ${s.endTime.substring(0, 5)}',
-                        style: const TextStyle(
-                          fontFamily: 'Sora',
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(s.sessionName, style: AppTextStyles.bodySoft),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => FaceScanScreen(scheduleId: s.id),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accent,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: const Text(
-                    'Check in',
-                    style: TextStyle(
-                      fontFamily: 'Sora',
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.accentInk,
-                      fontSize: 11,
-                    ),
-                  ),
-                ),
-              ],
+        if (index == _schedules.length) {
+          return Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              'Face and location are checked when you press Check in.',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodySoft,
             ),
-          ),
+          );
+        }
+        final s = _schedules[index];
+        return ShiftActionCard(
+          schedule: s,
+          record: _todayRecordFor(s.id),
+          onCheckIn: () => _checkIn(s),
+          onCheckOut: _checkOut,
         );
       },
     );

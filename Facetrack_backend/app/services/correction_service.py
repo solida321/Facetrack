@@ -1,3 +1,4 @@
+# app/services/correction_service.py
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
@@ -6,12 +7,16 @@ from fastapi import HTTPException, status
 from app.models.correction_request import CorrectionRequest
 from app.models.attendance_record import AttendanceRecord
 from app.models.notification import Notification
+from app.models.user import User
 from app.schemas.correction_request import CorrectionRequestCreate, CorrectionRequestReview
+from app.services.notification_service import notify_approvers
 
 
 def create_correction_request(db: Session, requested_by: int, data: CorrectionRequestCreate) -> CorrectionRequest:
     record = db.query(AttendanceRecord).filter(AttendanceRecord.id == data.attendance_record_id).first()
-    
+    if not record:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attendance record not found")
+
     if record.user_id != requested_by:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You can only request corrections for your own attendance")
     if record.status == "present":
@@ -33,6 +38,20 @@ def create_correction_request(db: Session, requested_by: int, data: CorrectionRe
         status="pending",
     )
     db.add(correction)
+
+    # Tell the team's manager and the admins that a request is waiting.
+    # It is saved in the same commit as the request itself.
+    requester = db.query(User).filter(User.id == requested_by).first()
+    print("DEBUG correction submitted by", requested_by, "requester found:", requester is not None)
+    if requester:
+        notify_approvers(
+            db,
+            requester,
+            "New correction request",
+            f"{requester.full_name} sent a correction request. Open Approvals to review it.",
+            "correction_submitted",
+        )
+
     db.commit()
     db.refresh(correction)
     return correction
