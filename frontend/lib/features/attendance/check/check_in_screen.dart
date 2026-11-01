@@ -67,6 +67,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
   }
 
   final msg = detail.isNotEmpty ? detail : e.toString();
+  debugPrint('CHECK-IN ERROR: $msg');   // <-- add this line
 
   if (msg.contains('already checked in')) return 'You already checked in for this shift today.';
   if (msg.contains('outside the allowed')) return 'You are outside the allowed check-in area.';
