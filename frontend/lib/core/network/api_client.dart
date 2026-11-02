@@ -3,9 +3,13 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ApiClient {
-  static final Dio dio = Dio(
-    BaseOptions(baseUrl: 'http://192.168.1.37:8000'), // FastAPI base URL
-  );
+     static final Dio dio = Dio(
+     BaseOptions(
+       baseUrl: 'https://facetrack-90w0.onrender.com',
+       connectTimeout: const Duration(seconds: 60),
+       receiveTimeout: const Duration(seconds: 60),
+     ),
+   );
 
   static final _storage = const FlutterSecureStorage();
 
