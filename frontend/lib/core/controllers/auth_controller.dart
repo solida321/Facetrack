@@ -4,6 +4,8 @@ import 'package:dio/dio.dart';
 import '../network/api_client.dart';
 import '../network/user_api.dart';
 import '../../data/models/user_model.dart';
+import '../network/api_error.dart';
+
 
 class AuthController extends ChangeNotifier {
   final _storage = const FlutterSecureStorage();
@@ -33,17 +35,9 @@ class AuthController extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-<<<<<<< HEAD
-      errorMessage = 'DEBUG: $e';
-      isLoading = false;
-      notifyListeners();
-      return false;
-    }
-=======
   String detail = apiErrorMessage(e, fallback: 'Login failed. Please try again.');
   if (e is DioException) {
     detail = 'DEBUG ${e.type.name} | status ${e.response?.statusCode} | ${e.requestOptions.uri} | ${e.message}';
->>>>>>> 99c1b91 (Add slides , Update)
   }
   errorMessage = detail;
   isLoading = false;
@@ -56,23 +50,26 @@ class AuthController extends ChangeNotifier {
     required String fullName,
     required String email,
     required String password,
+    String? phone,        // ← new
+    String? externalId,   // ← new
   }) async {
     isLoading = true;
     errorMessage = null;
     notifyListeners();
 
     try {
-      await ApiClient.dio.post('/api/auth/register', data: {
+            await ApiClient.dio.post('/api/auth/register', data: {
         'full_name': fullName,
         'email': email,
         'password': password,
+        if (phone != null && phone.isNotEmpty) 'phone': phone,
+        if (externalId != null && externalId.isNotEmpty) 'external_id': externalId,
       });
-
       isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
-      errorMessage = 'DEBUG: $e';
+      errorMessage = apiErrorMessage(e, fallback: 'Registration failed. Please try again.');
       isLoading = false;
       notifyListeners();
       return false;
@@ -80,7 +77,7 @@ class AuthController extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    await _storage.delete(key: 'access_token');
+    ApiClient.clearToken();
     currentUser = null;
     notifyListeners();
   }
