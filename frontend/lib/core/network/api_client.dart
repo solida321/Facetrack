@@ -10,7 +10,10 @@ class ApiClient {
        receiveTimeout: const Duration(seconds: 60),
      ),
    );
+<<<<<<< HEAD
 
+=======
+>>>>>>> 99c1b91 (Add slides , Update)
   static final _storage = const FlutterSecureStorage();
 
   static Future<void> attachToken() async {
