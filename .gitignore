@@ -1,3 +1,30 @@
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Python generated files
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Flutter and Dart generated files
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# IDE files
+.idea/
+*.iml
+
+# Temporary backups
 backup/
 frontend/backup/
-.env
+
+# Log files
+*.log
