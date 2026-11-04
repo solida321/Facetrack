@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ApiClient {
+<<<<<<< HEAD
     static final Dio dio = Dio(
     BaseOptions(
       baseUrl: 'https://facetrack-90w0.onrender.com', // Render server
@@ -11,6 +12,15 @@ class ApiClient {
     ),
   );
 
+=======
+     static final Dio dio = Dio(
+     BaseOptions(
+       baseUrl: 'https://facetrack-90w0.onrender.com',
+       connectTimeout: const Duration(seconds: 60),
+       receiveTimeout: const Duration(seconds: 60),
+     ),
+   );
+>>>>>>> origin/main
   static final _storage = const FlutterSecureStorage();
 
   static Future<void> attachToken() async {

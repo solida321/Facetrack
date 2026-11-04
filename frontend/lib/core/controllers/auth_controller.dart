@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-
+import 'package:dio/dio.dart';
 import '../network/api_client.dart';
 import '../network/user_api.dart';
 import '../../data/models/user_model.dart';
@@ -35,12 +35,24 @@ class AuthController extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
+<<<<<<< HEAD
       errorMessage = apiErrorMessage(e, fallback: 'Login failed. Please try again.');
       isLoading = false;
       notifyListeners();
       return false;
     }
+=======
+  String detail = apiErrorMessage(e, fallback: 'Login failed. Please try again.');
+  if (e is DioException) {
+    detail = 'DEBUG ${e.type.name} | status ${e.response?.statusCode} | ${e.requestOptions.uri} | ${e.message}';
+>>>>>>> origin/main
   }
+  errorMessage = detail;
+  isLoading = false;
+  notifyListeners();
+  return false;
+}
+}
 
   Future<bool> register({
     required String fullName,
